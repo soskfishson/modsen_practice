@@ -195,7 +195,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: your-username/modsen-practice
+          images: ${{ secrets.DOCKER_USERNAME }}/modsen-practice
           tags: |
             type=ref,event=branch
             type=ref,event=pr
