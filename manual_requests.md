@@ -22,6 +22,7 @@ For authenticated endpoints, you will need to replace `YOUR_ACCESS_TOKEN` and `Y
 **Description:** Registers a new user with the provided credentials.
 
 **Request Body Example:**
+
 ```json
 {
     "email": "test@example.com",
@@ -33,6 +34,7 @@ For authenticated endpoints, you will need to replace `YOUR_ACCESS_TOKEN` and `Y
 ```
 
 **Curl Command:**
+
 ```bash
 curl -X POST \
   http://localhost:3000/auth/register \
@@ -47,6 +49,7 @@ curl -X POST \
 **Description:** Logs in an existing user and returns access and refresh tokens.
 
 **Request Body Example:**
+
 ```json
 {
     "email": "test@example.com",
@@ -55,6 +58,7 @@ curl -X POST \
 ```
 
 **Curl Command:**
+
 ```bash
 curl -X POST \
   http://localhost:3000/auth/login \
@@ -69,6 +73,7 @@ curl -X POST \
 **Description:** Logs out the currently authenticated user by invalidating their tokens.
 
 **Curl Command:**
+
 ```bash
 curl -X POST \
   http://localhost:3000/auth/logout \
@@ -82,6 +87,7 @@ curl -X POST \
 **Description:** Refreshes the access token using a valid refresh token.
 
 **Request Body Example:**
+
 ```json
 {
     "refreshToken": "YOUR_REFRESH_TOKEN"
@@ -89,6 +95,7 @@ curl -X POST \
 ```
 
 **Curl Command:**
+
 ```bash
 curl -X POST \
   http://localhost:3000/auth/refresh \
@@ -107,6 +114,7 @@ curl -X POST \
 **Description:** Retrieves a list of users with various query parameters for filtering, pagination, and sorting.
 
 **Query Parameters:**
+
 - `page`: Page number (default: 1)
 - `limit`: Items per page (default: 10, max: 100)
 - `search`: Generic search term for username, email, or display name
@@ -117,6 +125,7 @@ curl -X POST \
 **Curl Commands (Examples):**
 
 **a) Get all users (default pagination and sorting):**
+
 ```bash
 curl -X GET \
   http://localhost:3000/users \
@@ -124,6 +133,7 @@ curl -X GET \
 ```
 
 **b) Search for users by username containing "test", page 1, limit 5:**
+
 ```bash
 curl -X GET \
   "http://localhost:3000/users?search=test&page=1&limit=5" \
@@ -131,6 +141,7 @@ curl -X GET \
 ```
 
 **c) Sort users by username in ascending order:**
+
 ```bash
 curl -X GET \
   "http://localhost:3000/users?sortBy=username&sortOrder=ASC" \
@@ -138,6 +149,7 @@ curl -X GET \
 ```
 
 **d) Get only `id`, `email`, and `username` fields:**
+
 ```bash
 curl -X GET \
   "http://localhost:3000/users?fields=id,email,username" \
@@ -151,6 +163,7 @@ curl -X GET \
 **Description:** Updates the profile of the authenticated user. Requires `YOUR_USER_ID`.
 
 **Request Body Example:**
+
 ```json
 {
     "displayName": "Updated Display Name",
@@ -159,6 +172,7 @@ curl -X GET \
 ```
 
 **Curl Command:**
+
 ```bash
 curl -X PATCH \
   http://localhost:3000/users/YOUR_USER_ID \
@@ -174,6 +188,7 @@ curl -X PATCH \
 **Description:** Deletes the authenticated user's account. Requires `YOUR_USER_ID`.
 
 **Curl Command:**
+
 ```bash
 curl -X DELETE \
   http://localhost:3000/users/YOUR_USER_ID \

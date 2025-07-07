@@ -8,6 +8,8 @@ import { UpdatePostDto } from '../src/posts/dto/update-post.dto';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { FindPostsQueryDto } from '../src/posts/dto/find-post-query.dto';
 import { PaginatedPostResponseDto } from '../src/posts/dto/paginated-post-response.dto';
+import { AddReactionDto } from '../src/posts/dto/add-reaction.dto';
+import { ReactionType } from '../src/posts/entities/reaction.entity';
 
 describe('PostsController', () => {
     let controller: PostsController;
@@ -18,6 +20,7 @@ describe('PostsController', () => {
         find: jest.fn(),
         update: jest.fn(),
         remove: jest.fn(),
+        reaction: jest.fn(),
     };
 
     beforeEach(async () => {
@@ -64,7 +67,7 @@ describe('PostsController', () => {
 
             mockPostsService.create.mockResolvedValue(expectedPost);
 
-            const result = await controller.create(createPostDto, user);
+            const result = await controller.create(createPostDto, user.id);
 
             expect(service.create).toHaveBeenCalledWith({
                 ...createPostDto,
@@ -132,9 +135,9 @@ describe('PostsController', () => {
 
             mockPostsService.update.mockResolvedValue(updatedPost);
 
-            const result = await controller.update(mockPost.id, updatePostDto, mockUser);
+            const result = await controller.update(mockPost.id, updatePostDto, mockUser.id);
 
-            expect(service.update).toHaveBeenCalledWith(mockPost.id, updatePostDto, mockUser);
+            expect(service.update).toHaveBeenCalledWith(mockPost.id, updatePostDto, mockUser.id);
             expect(result).toEqual(updatedPost);
         });
 
@@ -144,7 +147,9 @@ describe('PostsController', () => {
 
             mockPostsService.update.mockRejectedValue(new ForbiddenException());
 
-            await expect(controller.update(mockPost.id, updatePostDto, anotherUser)).rejects.toThrow(ForbiddenException);
+            await expect(
+                controller.update(mockPost.id, updatePostDto, anotherUser.id),
+            ).rejects.toThrow(ForbiddenException);
         });
 
         it('should throw NotFoundException if post not found', async () => {
@@ -152,7 +157,9 @@ describe('PostsController', () => {
 
             mockPostsService.update.mockRejectedValue(new NotFoundException());
 
-            await expect(controller.update('non-existent-id', updatePostDto, mockUser)).rejects.toThrow(NotFoundException);
+            await expect(
+                controller.update('non-existent-id', updatePostDto, mockUser.id),
+            ).rejects.toThrow(NotFoundException);
         });
     });
 
@@ -163,9 +170,9 @@ describe('PostsController', () => {
         it('should remove a post', async () => {
             mockPostsService.remove.mockResolvedValue(undefined);
 
-            await controller.remove(postId, mockUser);
+            await controller.remove(postId, mockUser.id);
 
-            expect(service.remove).toHaveBeenCalledWith(postId, mockUser);
+            expect(service.remove).toHaveBeenCalledWith(postId, mockUser.id);
         });
 
         it('should throw ForbiddenException if user is not the author', async () => {
@@ -173,13 +180,43 @@ describe('PostsController', () => {
 
             mockPostsService.remove.mockRejectedValue(new ForbiddenException());
 
-            await expect(controller.remove(postId, anotherUser)).rejects.toThrow(ForbiddenException);
+            await expect(controller.remove(postId, anotherUser.id)).rejects.toThrow(
+                ForbiddenException,
+            );
         });
 
         it('should throw NotFoundException if post not found', async () => {
             mockPostsService.remove.mockRejectedValue(new NotFoundException());
 
-            await expect(controller.remove('non-existent-id', mockUser)).rejects.toThrow(NotFoundException);
+            await expect(controller.remove('non-existent-id', mockUser.id)).rejects.toThrow(
+                NotFoundException,
+            );
         });
     });
-}); 
+
+    describe('reaction', () => {
+        const mockUser = { id: 'user-uuid' } as User;
+        const mockPostId = 'post-uuid';
+
+        it('should add a reaction to a post', async () => {
+            const addReactionDto: AddReactionDto = { postId: mockPostId, type: ReactionType.LIKE };
+            mockPostsService.reaction.mockResolvedValue(undefined);
+
+            await controller.reaction(addReactionDto, mockUser.id);
+
+            expect(service.reaction).toHaveBeenCalledWith(mockUser.id, addReactionDto);
+        });
+
+        it('should throw NotFoundException if post not found', async () => {
+            const addReactionDto: AddReactionDto = {
+                postId: 'non-existent-id',
+                type: ReactionType.LIKE,
+            };
+            mockPostsService.reaction.mockRejectedValue(new NotFoundException());
+
+            await expect(controller.reaction(addReactionDto, mockUser.id)).rejects.toThrow(
+                NotFoundException,
+            );
+        });
+    });
+});

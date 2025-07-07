@@ -77,4 +77,4 @@ export class FindPostsQueryDto {
     authorId?: string;
 
     [key: string]: any;
-} 
+}

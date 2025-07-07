@@ -73,7 +73,7 @@ describe('UsersController', () => {
 
             jest.spyOn(service, 'update').mockResolvedValue(updatedUser);
 
-            expect(await controller.update(userId, updateUserDto, currentUser)).toEqual(
+            expect(await controller.update(userId, updateUserDto, currentUser.id)).toEqual(
                 updatedUser,
             );
             expect(service.update).toHaveBeenCalledWith(userId, updateUserDto);
@@ -84,7 +84,7 @@ describe('UsersController', () => {
             const updateUserDto: UpdateUserDto = { displayName: 'Updated Name' };
             const currentUser = { id: '2' } as User;
 
-            await expect(controller.update(userId, updateUserDto, currentUser)).rejects.toThrow(
+            await expect(controller.update(userId, updateUserDto, currentUser.id)).rejects.toThrow(
                 ForbiddenException,
             );
         });
@@ -97,7 +97,7 @@ describe('UsersController', () => {
 
             jest.spyOn(service, 'remove').mockResolvedValue(undefined);
 
-            await controller.remove(userId, currentUser);
+            await controller.remove(userId, currentUser.id);
             expect(service.remove).toHaveBeenCalledWith(userId);
         });
 
@@ -105,7 +105,7 @@ describe('UsersController', () => {
             const userId = '1';
             const currentUser = { id: '2' } as User;
 
-            await expect(controller.remove(userId, currentUser)).rejects.toThrow(
+            await expect(controller.remove(userId, currentUser.id)).rejects.toThrow(
                 ForbiddenException,
             );
         });

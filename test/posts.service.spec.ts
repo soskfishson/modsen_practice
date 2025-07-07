@@ -6,10 +6,16 @@ import { Post } from '../src/posts/entities/post.entity';
 import { Attachment } from '../src/posts/entities/attachment.entity';
 import { CloudinaryService } from '../src/cloudinary/cloudinary.service';
 import { CreatePostDto } from '../src/posts/dto/create-post.dto';
-import { InternalServerErrorException } from '@nestjs/common';
+import {
+    NotFoundException,
+    ForbiddenException,
+    InternalServerErrorException,
+} from '@nestjs/common';
 import { User } from '../src/users/entities/user.entity';
 import { UpdatePostDto } from '../src/posts/dto/update-post.dto';
 import { FindPostsQueryDto } from '../src/posts/dto/find-post-query.dto';
+import { Reaction, ReactionType } from '../src/posts/entities/reaction.entity';
+import { AddReactionDto } from '../src/posts/dto/add-reaction.dto';
 
 describe('PostsService', () => {
     let service: PostsService;
@@ -25,6 +31,7 @@ describe('PostsService', () => {
         remove: jest.fn() as jest.Mock<any, any>,
         createQueryBuilder: jest.fn() as jest.Mock<any, any>,
         increment: jest.fn() as jest.Mock<any, any>,
+        decrement: jest.fn() as jest.Mock<any, any>,
     };
 
     const mockAttachmentRepository = {
@@ -33,6 +40,13 @@ describe('PostsService', () => {
         delete: jest.fn() as jest.Mock<any, any>,
         findOne: jest.fn() as jest.Mock<any, any>,
         find: jest.fn() as jest.Mock<any, any>,
+    };
+
+    const mockReactionRepository = {
+        create: jest.fn() as jest.Mock<any, any>,
+        save: jest.fn() as jest.Mock<any, any>,
+        findOne: jest.fn() as jest.Mock<any, any>,
+        remove: jest.fn() as jest.Mock<any, any>,
     };
 
     const mockCloudinaryService = {
@@ -74,12 +88,18 @@ describe('PostsService', () => {
         mockPostRepository.remove.mockClear();
         mockPostRepository.createQueryBuilder.mockClear();
         mockPostRepository.increment.mockClear();
+        mockPostRepository.decrement.mockClear();
 
         mockAttachmentRepository.create.mockClear();
         mockAttachmentRepository.save.mockClear();
         mockAttachmentRepository.delete.mockClear();
         mockAttachmentRepository.findOne.mockClear();
         mockAttachmentRepository.find.mockClear();
+
+        mockReactionRepository.create.mockClear();
+        mockReactionRepository.save.mockClear();
+        mockReactionRepository.findOne.mockClear();
+        mockReactionRepository.remove.mockClear();
 
         mockCloudinaryService.uploadImage.mockClear();
         mockCloudinaryService.deleteImage.mockClear();
@@ -102,6 +122,10 @@ describe('PostsService', () => {
                 {
                     provide: getRepositoryToken(Post),
                     useValue: mockPostRepository,
+                },
+                {
+                    provide: getRepositoryToken(Reaction),
+                    useValue: mockReactionRepository,
                 },
                 {
                     provide: getRepositoryToken(Attachment),
@@ -179,8 +203,7 @@ describe('PostsService', () => {
                     author: { id: authorId },
                 }),
             );
-
-            expect(mockTransactionalEntityManager.save).toHaveBeenCalledTimes(3);
+            expect(mockTransactionalEntityManager.save).toHaveBeenCalled();
             expect(mockAttachmentRepository.create).toHaveBeenCalledTimes(2);
             expect(mockAttachmentRepository.create).toHaveBeenCalledWith(
                 expect.objectContaining({ post: mockSavedPost }),
@@ -231,7 +254,7 @@ describe('PostsService', () => {
                     author: { id: authorId },
                 }),
             );
-            expect(mockTransactionalEntityManager.save).toHaveBeenCalledTimes(1);
+            expect(mockTransactionalEntityManager.save).toHaveBeenCalled();
             expect(mockAttachmentRepository.create).not.toHaveBeenCalled();
             expect(mockCloudinaryService.uploadImage).not.toHaveBeenCalled();
             expect(result).toEqual(mockSavedPost);
@@ -269,7 +292,7 @@ describe('PostsService', () => {
             });
             mockTransactionalEntityManager.find.mockResolvedValue([]);
 
-            const result = await service.update(mockPost.id, updatePostDto, mockUser);
+            const result = await service.update(mockPost.id, updatePostDto, mockUser.id);
 
             expect(mockDataSource.transaction).toHaveBeenCalled();
             expect(result.postTitle).toEqual(updatePostDto.postTitle);
@@ -299,7 +322,7 @@ describe('PostsService', () => {
                 publicId: 'newpid',
             });
 
-            const result = await service.update(mockPost.id, updatePostDto, mockUser);
+            const result = await service.update(mockPost.id, updatePostDto, mockUser.id);
 
             expect(mockDataSource.transaction).toHaveBeenCalled();
             expect(mockCloudinaryService.uploadImage).toHaveBeenCalledWith(
@@ -331,7 +354,7 @@ describe('PostsService', () => {
                 .mockResolvedValueOnce(savedUpdatedAttachment);
             mockTransactionalEntityManager.find.mockResolvedValue([savedUpdatedAttachment]);
 
-            const result = await service.update(mockPost.id, updatePostDto, mockUser);
+            const result = await service.update(mockPost.id, updatePostDto, mockUser.id);
 
             expect(mockDataSource.transaction).toHaveBeenCalled();
             expect(result.attachments[0].description).toEqual(updatedAttachmentDto.description);
@@ -350,13 +373,18 @@ describe('PostsService', () => {
                 updatedAttachments: [updateAttachmentDto],
             };
 
-            mockTransactionalEntityManager.findOne.mockResolvedValue(postWithAttachments);
+            mockTransactionalEntityManager.findOne.mockImplementation((entityType, _options) => {
+                if (entityType === Attachment) {
+                    return Promise.resolve(existingAttachment);
+                }
+                return Promise.resolve(postWithAttachments);
+            });
             mockTransactionalEntityManager.save.mockResolvedValue(postWithAttachments);
             mockTransactionalEntityManager.delete.mockResolvedValue(undefined);
             mockTransactionalEntityManager.find.mockResolvedValue([]);
             mockCloudinaryService.deleteImage.mockResolvedValue(undefined);
 
-            const result = await service.update(mockPost.id, updatePostDto, mockUser);
+            const result = await service.update(mockPost.id, updatePostDto, mockUser.id);
 
             expect(mockDataSource.transaction).toHaveBeenCalled();
             expect(mockCloudinaryService.deleteImage).toHaveBeenCalledWith(
@@ -381,13 +409,18 @@ describe('PostsService', () => {
                 deletedAttachmentIds: ['att-id-1'],
             };
 
-            mockTransactionalEntityManager.findOne.mockResolvedValue(postWithAttachments);
+            mockTransactionalEntityManager.findOne.mockImplementation((entityType, _options) => {
+                if (entityType === Attachment) {
+                    return Promise.resolve(existingAttachment);
+                }
+                return Promise.resolve(postWithAttachments);
+            });
             mockTransactionalEntityManager.save.mockResolvedValue(postWithAttachments);
             mockTransactionalEntityManager.delete.mockResolvedValue(undefined);
             mockTransactionalEntityManager.find.mockResolvedValue([]);
             mockCloudinaryService.deleteImage.mockResolvedValue(undefined);
 
-            const result = await service.update(mockPost.id, updatePostDto, mockUser);
+            const result = await service.update(mockPost.id, updatePostDto, mockUser.id);
 
             expect(mockDataSource.transaction).toHaveBeenCalled();
             expect(mockCloudinaryService.deleteImage).toHaveBeenCalledWith(
@@ -403,7 +436,7 @@ describe('PostsService', () => {
         it('should throw InternalServerErrorException if post not found', async () => {
             mockTransactionalEntityManager.findOne.mockResolvedValue(null);
 
-            await expect(service.update('non-existent-id', {}, mockUser)).rejects.toThrow(
+            await expect(service.update('non-existent-id', {}, mockUser.id)).rejects.toThrow(
                 InternalServerErrorException,
             );
         });
@@ -412,7 +445,7 @@ describe('PostsService', () => {
             const anotherUser = { id: 'another-user-uuid' } as User;
             mockTransactionalEntityManager.findOne.mockResolvedValue(mockPost);
 
-            await expect(service.update(mockPost.id, {}, anotherUser)).rejects.toThrow(
+            await expect(service.update(mockPost.id, {}, anotherUser.id)).rejects.toThrow(
                 InternalServerErrorException,
             );
         });
@@ -433,7 +466,7 @@ describe('PostsService', () => {
                 new Error('Cloudinary upload failed'),
             );
 
-            await expect(service.update(mockPost.id, updatePostDto, mockUser)).rejects.toThrow(
+            await expect(service.update(mockPost.id, updatePostDto, mockUser.id)).rejects.toThrow(
                 InternalServerErrorException,
             );
         });
@@ -459,7 +492,7 @@ describe('PostsService', () => {
                 new Error('Cloudinary delete failed'),
             );
 
-            await expect(service.update(mockPost.id, updatePostDto, mockUser)).rejects.toThrow(
+            await expect(service.update(mockPost.id, updatePostDto, mockUser.id)).rejects.toThrow(
                 InternalServerErrorException,
             );
         });
@@ -484,7 +517,7 @@ describe('PostsService', () => {
                 new Error('Cloudinary delete failed'),
             );
 
-            await expect(service.update(mockPost.id, updatePostDto, mockUser)).rejects.toThrow(
+            await expect(service.update(mockPost.id, updatePostDto, mockUser.id)).rejects.toThrow(
                 InternalServerErrorException,
             );
         });
@@ -512,7 +545,7 @@ describe('PostsService', () => {
             mockTransactionalEntityManager.findOne.mockResolvedValue(mockPost);
             mockTransactionalEntityManager.remove.mockResolvedValue(undefined);
 
-            await service.remove(mockPost.id, mockUser);
+            await service.remove(mockPost.id, mockUser.id);
 
             expect(mockTransactionalEntityManager.findOne).toHaveBeenCalledWith(Post, {
                 where: { id: mockPost.id },
@@ -530,27 +563,27 @@ describe('PostsService', () => {
             mockCloudinaryService.deleteImage.mockResolvedValue(undefined);
             mockTransactionalEntityManager.remove.mockResolvedValue(undefined);
 
-            await service.remove(postWithAttachments.id, mockUser);
+            await service.remove(postWithAttachments.id, mockUser.id);
 
             expect(mockCloudinaryService.deleteImage).toHaveBeenCalledWith(attachment1.publicId);
             expect(mockCloudinaryService.deleteImage).toHaveBeenCalledWith(attachment2.publicId);
             expect(mockTransactionalEntityManager.remove).toHaveBeenCalledWith(postWithAttachments);
         });
 
-        it('should throw InternalServerErrorException if post not found', async () => {
+        it('should throw NotFoundException if post not found', async () => {
             mockTransactionalEntityManager.findOne.mockResolvedValue(null);
 
-            await expect(service.remove('non-existent-id', mockUser)).rejects.toThrow(
-                InternalServerErrorException,
+            await expect(service.remove('non-existent-id', mockUser.id)).rejects.toThrow(
+                NotFoundException,
             );
         });
 
-        it('should throw InternalServerErrorException if user is not the author', async () => {
+        it('should throw ForbiddenException if user is not the author', async () => {
             const anotherUser = { id: 'another-user-uuid' } as User;
             mockTransactionalEntityManager.findOne.mockResolvedValue(mockPost);
 
-            await expect(service.remove(mockPost.id, anotherUser)).rejects.toThrow(
-                InternalServerErrorException,
+            await expect(service.remove(mockPost.id, anotherUser.id)).rejects.toThrow(
+                ForbiddenException,
             );
         });
 
@@ -563,7 +596,7 @@ describe('PostsService', () => {
                 new Error('Cloudinary delete failed'),
             );
 
-            await expect(service.remove(postWithAttachments.id, mockUser)).rejects.toThrow(
+            await expect(service.remove(postWithAttachments.id, mockUser.id)).rejects.toThrow(
                 InternalServerErrorException,
             );
         });
@@ -624,7 +657,7 @@ describe('PostsService', () => {
 
             expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
                 expect.stringContaining("to_tsvector('english', post.postTitle)"),
-                expect.objectContaining({ tsQueryTerm: 'Test:* Post:* 1:*' }),
+                expect.objectContaining({ tsQueryTerm: 'Test:* & Post:* & 1:*' }),
             );
             expect(result.data).toEqual([mockPosts[0]]);
         });
@@ -695,6 +728,281 @@ describe('PostsService', () => {
             await service.find(queryDto);
 
             expect(mockPostRepository.increment).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('reaction', () => {
+        const mockUser = { id: 'user-uuid' } as User;
+        const mockPostId = 'post-uuid';
+        const mockPost = {
+            id: mockPostId,
+            postTitle: 'Test Post',
+            content: 'Test Content',
+            authorId: 'author-uuid',
+            viewsCount: 0,
+            likesCount: 0,
+            dislikesCount: 0,
+            commentsCount: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            attachments: [],
+            reactions: [],
+            author: { id: 'author-uuid' } as User,
+        } as Post;
+
+        beforeEach(() => {
+            mockTransactionalEntityManager.findOne.mockImplementation((entity, options) => {
+                if (entity === Post && options.where.id === mockPostId) {
+                    return Promise.resolve(mockPost);
+                }
+                return Promise.resolve(null);
+            });
+            mockPost.likesCount = 0;
+            mockPost.dislikesCount = 0;
+            mockTransactionalEntityManager.save.mockClear();
+            mockTransactionalEntityManager.delete.mockClear();
+            mockPostRepository.increment.mockClear();
+            mockPostRepository.decrement.mockClear();
+            mockReactionRepository.create.mockClear();
+        });
+
+        it('should add a LIKE reaction to a post', async () => {
+            const addReactionDto: AddReactionDto = { postId: mockPostId, type: ReactionType.LIKE };
+
+            mockTransactionalEntityManager.findOne
+                .mockResolvedValueOnce(mockPost)
+                .mockResolvedValueOnce(null);
+
+            mockTransactionalEntityManager.save.mockResolvedValueOnce({
+                id: 1,
+                ...addReactionDto,
+                userId: mockUser.id,
+            });
+
+            await service.reaction(mockUser.id, addReactionDto);
+
+            expect(mockTransactionalEntityManager.findOne).toHaveBeenCalledWith(Post, {
+                where: { id: mockPostId },
+            });
+            expect(mockTransactionalEntityManager.findOne).toHaveBeenCalledWith(Reaction, {
+                where: { userId: mockUser.id, postId: mockPostId },
+            });
+            expect(mockReactionRepository.create).toHaveBeenCalledWith({
+                type: ReactionType.LIKE,
+                userId: mockUser.id,
+                postId: mockPostId,
+            });
+            expect(mockTransactionalEntityManager.save).toHaveBeenCalled();
+            expect(mockPostRepository.increment).toHaveBeenCalledWith(
+                { id: mockPostId },
+                'likesCount',
+                1,
+            );
+            expect(mockPostRepository.decrement).not.toHaveBeenCalled();
+        });
+
+        it('should add a DISLIKE reaction to a post', async () => {
+            const addReactionDto: AddReactionDto = {
+                postId: mockPostId,
+                type: ReactionType.DISLIKE,
+            };
+
+            mockTransactionalEntityManager.findOne
+                .mockResolvedValueOnce(mockPost)
+                .mockResolvedValueOnce(null);
+
+            mockTransactionalEntityManager.save.mockResolvedValueOnce({
+                id: 1,
+                ...addReactionDto,
+                userId: mockUser.id,
+            });
+
+            await service.reaction(mockUser.id, addReactionDto);
+
+            expect(mockPostRepository.increment).toHaveBeenCalledWith(
+                { id: mockPostId },
+                'dislikesCount',
+                1,
+            );
+            expect(mockPostRepository.decrement).not.toHaveBeenCalled();
+        });
+
+        it('should remove an existing LIKE reaction', async () => {
+            const addReactionDto: AddReactionDto = { postId: mockPostId, type: null };
+            const existingReaction = {
+                id: 1,
+                type: ReactionType.LIKE,
+                userId: mockUser.id,
+                postId: mockPostId,
+            } as Reaction;
+
+            mockTransactionalEntityManager.findOne
+                .mockResolvedValueOnce(mockPost)
+                .mockResolvedValueOnce(existingReaction);
+
+            mockTransactionalEntityManager.delete.mockResolvedValueOnce(undefined);
+
+            await service.reaction(mockUser.id, addReactionDto);
+
+            expect(mockTransactionalEntityManager.delete).toHaveBeenCalledWith(
+                Reaction,
+                existingReaction.id,
+            );
+            expect(mockPostRepository.decrement).toHaveBeenCalledWith(
+                { id: mockPostId },
+                'likesCount',
+                1,
+            );
+            expect(mockPostRepository.increment).not.toHaveBeenCalled();
+            expect(mockReactionRepository.create).not.toHaveBeenCalled();
+        });
+
+        it('should remove an existing DISLIKE reaction', async () => {
+            const addReactionDto: AddReactionDto = { postId: mockPostId, type: null };
+            const existingReaction = {
+                id: 1,
+                type: ReactionType.DISLIKE,
+                userId: mockUser.id,
+                postId: mockPostId,
+            } as Reaction;
+
+            mockTransactionalEntityManager.findOne
+                .mockResolvedValueOnce(mockPost)
+                .mockResolvedValueOnce(existingReaction);
+
+            mockTransactionalEntityManager.delete.mockResolvedValueOnce(undefined);
+
+            await service.reaction(mockUser.id, addReactionDto);
+
+            expect(mockPostRepository.decrement).toHaveBeenCalledWith(
+                { id: mockPostId },
+                'dislikesCount',
+                1,
+            );
+            expect(mockPostRepository.increment).not.toHaveBeenCalled();
+            expect(mockReactionRepository.create).not.toHaveBeenCalled();
+        });
+
+        it('should change reaction from LIKE to DISLIKE', async () => {
+            const addReactionDto: AddReactionDto = {
+                postId: mockPostId,
+                type: ReactionType.DISLIKE,
+            };
+            const existingReaction = {
+                id: 1,
+                type: ReactionType.LIKE,
+                userId: mockUser.id,
+                postId: mockPostId,
+            } as Reaction;
+
+            mockTransactionalEntityManager.findOne
+                .mockResolvedValueOnce(mockPost)
+                .mockResolvedValueOnce(existingReaction);
+
+            mockTransactionalEntityManager.delete.mockResolvedValueOnce(undefined);
+            mockTransactionalEntityManager.save.mockResolvedValueOnce({
+                id: 2,
+                type: ReactionType.DISLIKE,
+                userId: mockUser.id,
+                postId: mockPostId,
+            });
+
+            await service.reaction(mockUser.id, addReactionDto);
+
+            expect(mockTransactionalEntityManager.delete).toHaveBeenCalledWith(
+                Reaction,
+                existingReaction.id,
+            );
+            expect(mockPostRepository.decrement).toHaveBeenCalledWith(
+                { id: mockPostId },
+                'likesCount',
+                1,
+            );
+            expect(mockReactionRepository.create).toHaveBeenCalledWith({
+                type: ReactionType.DISLIKE,
+                userId: mockUser.id,
+                postId: mockPostId,
+            });
+            expect(mockTransactionalEntityManager.save).toHaveBeenCalled();
+            expect(mockPostRepository.increment).toHaveBeenCalledWith(
+                { id: mockPostId },
+                'dislikesCount',
+                1,
+            );
+        });
+
+        it('should change reaction from DISLIKE to LIKE', async () => {
+            const addReactionDto: AddReactionDto = {
+                postId: mockPostId,
+                type: ReactionType.LIKE,
+            };
+            const existingReaction = {
+                id: 1,
+                type: ReactionType.DISLIKE,
+                userId: mockUser.id,
+                postId: mockPostId,
+            } as Reaction;
+
+            mockTransactionalEntityManager.findOne
+                .mockResolvedValueOnce(mockPost)
+                .mockResolvedValueOnce(existingReaction);
+
+            mockTransactionalEntityManager.delete.mockResolvedValueOnce(undefined);
+            mockTransactionalEntityManager.save.mockResolvedValueOnce({
+                id: 2,
+                type: ReactionType.LIKE,
+                userId: mockUser.id,
+                postId: mockPostId,
+            });
+
+            await service.reaction(mockUser.id, addReactionDto);
+
+            expect(mockTransactionalEntityManager.delete).toHaveBeenCalledWith(
+                Reaction,
+                existingReaction.id,
+            );
+            expect(mockPostRepository.decrement).toHaveBeenCalledWith(
+                { id: mockPostId },
+                'dislikesCount',
+                1,
+            );
+            expect(mockReactionRepository.create).toHaveBeenCalledWith({
+                type: ReactionType.LIKE,
+                userId: mockUser.id,
+                postId: mockPostId,
+            });
+            expect(mockTransactionalEntityManager.save).toHaveBeenCalled();
+            expect(mockPostRepository.increment).toHaveBeenCalledWith(
+                { id: mockPostId },
+                'likesCount',
+                1,
+            );
+        });
+
+        it('should throw NotFoundException if post not found', async () => {
+            const addReactionDto: AddReactionDto = {
+                postId: 'non-existent-id',
+                type: ReactionType.LIKE,
+            };
+            mockTransactionalEntityManager.findOne.mockImplementationOnce((entity, options) => {
+                if (entity === Post && options.where.id === 'non-existent-id') {
+                    return Promise.resolve(null);
+                }
+                return Promise.resolve(mockPost);
+            });
+
+            await expect(service.reaction(mockUser.id, addReactionDto)).rejects.toThrow(
+                NotFoundException,
+            );
+        });
+
+        it('should throw an error if transaction fails', async () => {
+            const addReactionDto: AddReactionDto = { postId: mockPostId, type: ReactionType.LIKE };
+
+            mockTransactionalEntityManager.findOne.mockResolvedValueOnce(mockPost);
+            mockTransactionalEntityManager.save.mockRejectedValue(new Error('Transaction failed'));
+
+            await expect(service.reaction(mockUser.id, addReactionDto)).rejects.toThrow(Error);
         });
     });
 });

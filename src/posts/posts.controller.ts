@@ -19,12 +19,12 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { User } from '../users/entities/user.entity';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { Post as PostEntity } from './entities/post.entity';
 import { FindPostsQueryDto } from './dto/find-post-query.dto';
 import { PaginatedPostResponseDto } from './dto/paginated-post-response.dto';
+import { AddReactionDto } from './dto/add-reaction.dto';
+import { UserId } from '../common/decorators/user-id.decorator';
 
 @ApiTags('posts')
 @Controller('posts')
@@ -38,8 +38,8 @@ export class PostsController {
     @ApiOperation({ summary: 'Create new post' })
     @ApiResponse({ status: 201, description: 'Post created successfully.' })
     @ApiResponse({ status: 401, description: 'Unauthorized.' })
-    async create(@Body() createPostDto: CreatePostDto, @CurrentUser() user: User) {
-        return this.postsService.create({ ...createPostDto, authorId: user.id });
+    async create(@Body() createPostDto: CreatePostDto, @UserId() authorId: string) {
+        return this.postsService.create({ ...createPostDto, authorId });
     }
 
     @Get()
@@ -66,9 +66,9 @@ export class PostsController {
     async update(
         @Param('id', ParseUUIDPipe) id: string,
         @Body() updatePostDto: UpdatePostDto,
-        @CurrentUser() currentUser: User,
+        @UserId() currentUserId: string,
     ) {
-        return this.postsService.update(id, updatePostDto, currentUser);
+        return this.postsService.update(id, updatePostDto, currentUserId);
     }
 
     @Delete(':id')
@@ -82,8 +82,22 @@ export class PostsController {
     @HttpCode(HttpStatus.NO_CONTENT)
     async remove(
         @Param('id', ParseUUIDPipe) id: string,
-        @CurrentUser() currentUser: User,
+        @UserId() currentUserId: string,
     ): Promise<void> {
-        await this.postsService.remove(id, currentUser);
+        await this.postsService.remove(id, currentUserId);
+    }
+
+    @Post('reactions')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Adds reactions for post' })
+    @ApiResponse({ status: 200, description: 'Added reaction successfully.' })
+    @ApiResponse({ status: 401, description: 'Unauthorized.' })
+    @ApiResponse({ status: 404, description: 'Post not found.' })
+    async reaction(
+        @Body() addReactionDto: AddReactionDto,
+        @UserId() currentUserId: string,
+    ): Promise<void> {
+        await this.postsService.reaction(currentUserId, addReactionDto);
     }
 }

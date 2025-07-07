@@ -31,4 +31,4 @@ export class PaginatedPostResponseDto {
         example: 13,
     })
     totalPages: number;
-} 
+}

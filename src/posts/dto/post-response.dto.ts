@@ -38,4 +38,4 @@ export class PostResponseDto {
 
     @ApiProperty()
     updatedAt: Date;
-} 
+}

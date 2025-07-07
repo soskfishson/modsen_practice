@@ -12,10 +12,11 @@ export class UpdateAttachmentDto extends PartialType(CreateAttachmentDto) {
     id: string;
 
     @ApiProperty({
-        description: 'Set to true to delete the attachment. fileContent and description will be ignored if true.',
+        description:
+            'Set to true to delete the attachment. fileContent and description will be ignored if true.',
         default: false,
         required: false,
     })
     @IsOptional()
     delete?: boolean;
-} 
+}

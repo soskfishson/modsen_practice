@@ -11,9 +11,11 @@ import { Post } from './entities/post.entity';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Attachment } from './entities/attachment.entity';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { User } from '../users/entities/user.entity';
 import { FindPostsQueryDto } from './dto/find-post-query.dto';
 import { PaginatedPostResponseDto } from './dto/paginated-post-response.dto';
+import { AddReactionDto } from './dto/add-reaction.dto';
+import { Reaction } from './entities/reaction.entity';
+import { ReactionType } from './entities/reaction.entity';
 
 interface CreatePostInput extends CreatePostDto {
     authorId: string;
@@ -24,6 +26,8 @@ export class PostsService {
     constructor(
         @InjectRepository(Post)
         private postsRepository: Repository<Post>,
+        @InjectRepository(Reaction)
+        private reactionRepository: Repository<Reaction>,
         @InjectRepository(Attachment)
         private attachmentRepository: Repository<Attachment>,
         private cloudinaryService: CloudinaryService,
@@ -61,7 +65,7 @@ export class PostsService {
         });
     }
 
-    async update(id: string, updatePostDto: UpdatePostDto, currentUser: User): Promise<Post> {
+    async update(id: string, updatePostDto: UpdatePostDto, currentUserId: string): Promise<Post> {
         const { newAttachments, updatedAttachments, deletedAttachmentIds, ...postData } =
             updatePostDto;
 
@@ -76,7 +80,7 @@ export class PostsService {
                     throw new NotFoundException(`Post with ID ${id} not found.`);
                 }
 
-                if (post.author.id !== currentUser.id) {
+                if (post.author.id !== currentUserId) {
                     throw new ForbiddenException('You are not allowed to update this post.');
                 }
 
@@ -167,7 +171,7 @@ export class PostsService {
         }) as unknown as Post;
     }
 
-    async remove(id: string, currentUser: User): Promise<void> {
+    async remove(id: string, currentUserId: string): Promise<void> {
         return this.dataSource.transaction(async (transactionalEntityManager) => {
             const post = await transactionalEntityManager.findOne(Post, {
                 where: { id },
@@ -178,7 +182,7 @@ export class PostsService {
                 throw new NotFoundException(`Post with ID ${id} not found.`);
             }
 
-            if (post.author.id !== currentUser.id) {
+            if (post.author.id !== currentUserId) {
                 throw new ForbiddenException('You are not allowed to delete this post.');
             }
 
@@ -353,5 +357,62 @@ export class PostsService {
             limit: limit!,
             totalPages: Math.ceil(total / limit!),
         };
+    }
+
+    async reaction(id: string, addReactionDto: AddReactionDto) {
+        return this.dataSource.transaction(async (transactionalEntityManager) => {
+            const post = await transactionalEntityManager.findOne(Post, {
+                where: { id: addReactionDto.postId },
+            });
+
+            if (!post) {
+                throw new NotFoundException(`Post with ID ${addReactionDto.postId} not found.`);
+            }
+
+            const existingReaction = await transactionalEntityManager.findOne(Reaction, {
+                where: { userId: id, postId: addReactionDto.postId },
+            });
+
+            if (existingReaction) {
+                await transactionalEntityManager.delete(Reaction, existingReaction.id);
+
+                if (existingReaction.type === ReactionType.LIKE) {
+                    await this.postsRepository.decrement(
+                        { id: addReactionDto.postId },
+                        'likesCount',
+                        1,
+                    );
+                } else if (existingReaction.type === ReactionType.DISLIKE) {
+                    await this.postsRepository.decrement(
+                        { id: addReactionDto.postId },
+                        'dislikesCount',
+                        1,
+                    );
+                }
+            }
+
+            if (addReactionDto.type !== null) {
+                const newReaction = this.reactionRepository.create({
+                    type: addReactionDto.type,
+                    userId: id,
+                    postId: addReactionDto.postId,
+                });
+                await transactionalEntityManager.save(newReaction);
+
+                if (addReactionDto.type === ReactionType.LIKE) {
+                    await this.postsRepository.increment(
+                        { id: addReactionDto.postId },
+                        'likesCount',
+                        1,
+                    );
+                } else if (addReactionDto.type === ReactionType.DISLIKE) {
+                    await this.postsRepository.increment(
+                        { id: addReactionDto.postId },
+                        'dislikesCount',
+                        1,
+                    );
+                }
+            }
+        });
     }
 }
