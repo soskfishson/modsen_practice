@@ -231,6 +231,7 @@ describe('AuthService', () => {
         it('should refresh access token if valid refresh token', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
             const mockDbUser = { ...mockUser, refreshToken: 'validRefreshToken' } as User;
+            const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
 
             jest.spyOn(usersService, 'find').mockResolvedValueOnce({
                 data: [mockDbUser],
@@ -241,7 +242,7 @@ describe('AuthService', () => {
             });
             jest.spyOn(jwtService, 'sign').mockReturnValueOnce('newAccessToken');
 
-            const result = await service.refreshAccessToken(mockUser, 'validRefreshToken');
+            const result = await service.refreshAccessToken(mockJwtPayload, 'validRefreshToken');
             expect(usersService.find).toHaveBeenCalledWith({
                 id: mockUser.id,
                 limit: 1,
@@ -262,6 +263,7 @@ describe('AuthService', () => {
 
         it('should throw UnauthorizedException if user not found', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
+            const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
             jest.spyOn(usersService, 'find').mockResolvedValueOnce({
                 data: [],
                 total: 0,
@@ -270,7 +272,7 @@ describe('AuthService', () => {
                 totalPages: 0,
             });
 
-            await expect(service.refreshAccessToken(mockUser, 'someToken')).rejects.toThrow(
+            await expect(service.refreshAccessToken(mockJwtPayload, 'someToken')).rejects.toThrow(
                 UnauthorizedException,
             );
         });
@@ -278,6 +280,7 @@ describe('AuthService', () => {
         it('should throw UnauthorizedException if refresh token is invalid', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
             const mockDbUser = { ...mockUser, refreshToken: 'invalidRefreshToken' } as User;
+            const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
             jest.spyOn(usersService, 'find').mockResolvedValueOnce({
                 data: [mockDbUser],
                 total: 1,
@@ -286,7 +289,7 @@ describe('AuthService', () => {
                 totalPages: 1,
             });
 
-            await expect(service.refreshAccessToken(mockUser, 'wrongToken')).rejects.toThrow(
+            await expect(service.refreshAccessToken(mockJwtPayload, 'wrongToken')).rejects.toThrow(
                 UnauthorizedException,
             );
         });
@@ -294,6 +297,7 @@ describe('AuthService', () => {
         it('should throw UnauthorizedException if refresh token is null', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
             const mockDbUser = { ...mockUser, refreshToken: null } as unknown as User;
+            const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
             jest.spyOn(usersService, 'find').mockResolvedValueOnce({
                 data: [mockDbUser],
                 total: 1,
@@ -302,7 +306,7 @@ describe('AuthService', () => {
                 totalPages: 1,
             });
 
-            await expect(service.refreshAccessToken(mockUser, 'someToken')).rejects.toThrow(
+            await expect(service.refreshAccessToken(mockJwtPayload, 'someToken')).rejects.toThrow(
                 UnauthorizedException,
             );
         });
