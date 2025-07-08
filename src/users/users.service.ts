@@ -38,7 +38,16 @@ export class UsersService {
     }
 
     async find(queryDto: FindUsersQueryDto): Promise<PaginatedUserResponseDto> {
-        const { page = 1, limit = 10, search, sortBy, sortOrder, fields, ...filters } = queryDto;
+        const {
+            page = 1,
+            limit = 10,
+            search,
+            sortBy,
+            sortOrder,
+            fields,
+            id,
+            ...filters
+        } = queryDto;
 
         const queryBuilder = this.usersRepository.createQueryBuilder('user');
 
@@ -76,6 +85,10 @@ export class UsersService {
                         .orWhere('user.displayName ILIKE :search', { search: `%${search}%` });
                 }),
             );
+        }
+
+        if (id) {
+            queryBuilder.andWhere('user.id = :id', { id });
         }
 
         Object.keys(filters).forEach((key) => {

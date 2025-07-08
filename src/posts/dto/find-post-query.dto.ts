@@ -2,9 +2,9 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Max, Min, IsIn, IsUUID } from 'class-validator';
 
-export class FindUsersQueryDto {
+export class FindPostsQueryDto {
     @ApiPropertyOptional({
-        description: 'The ID of the user to find.',
+        description: 'The ID of the post to find.',
         example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
     })
     @IsOptional()
@@ -12,8 +12,8 @@ export class FindUsersQueryDto {
     id?: string;
 
     @ApiPropertyOptional({
-        description: 'Generic search term to filter users by username, email, or display name.',
-        example: 'john',
+        description: 'Generic search term to filter posts by title or content.',
+        example: 'NestJS tutorial',
     })
     @IsOptional()
     @IsString()
@@ -45,7 +45,7 @@ export class FindUsersQueryDto {
 
     @ApiPropertyOptional({
         description: 'Field to sort by.',
-        example: 'username',
+        example: 'createdAt',
     })
     @IsOptional()
     @IsString()
@@ -62,10 +62,19 @@ export class FindUsersQueryDto {
 
     @ApiPropertyOptional({
         description: 'Comma-separated list of fields to return.',
-        example: 'id,username,email',
+        example: 'id,postTitle,content',
     })
     @IsOptional()
     @IsString()
     fields?: string;
+
+    @ApiPropertyOptional({
+        description: 'Filter posts by author ID.',
+        example: 'some-user-uuid',
+    })
+    @IsOptional()
+    @IsUUID()
+    authorId?: string;
+
     [key: string]: any;
 }

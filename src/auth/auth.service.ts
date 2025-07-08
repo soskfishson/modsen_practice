@@ -61,9 +61,9 @@ export class AuthService {
         } as UpdateUserDto);
     }
 
-    async refreshAccessToken(user: User, refreshToken: string): Promise<RefreshResponseDto> {
+    async refreshAccessToken(user: JwtPayload, refreshToken: string): Promise<RefreshResponseDto> {
         const { data } = await this.usersService.find({
-            id: user.id,
+            id: user.sub,
             limit: 1,
             fields: 'id,refreshToken',
         });
@@ -78,7 +78,7 @@ export class AuthService {
             throw new UnauthorizedException('Invalid or revoked refresh token');
         }
 
-        const payload: JwtPayload = { sub: user.id, email: user.email };
+        const payload: JwtPayload = { sub: user.sub, email: user.email };
         const accessToken = this.jwtService.sign(payload, {
             secret: this.configService.get<string>('JWT_SECRET'),
             expiresIn: this.configService.get<string>('JWT_EXPIRES_IN'),
