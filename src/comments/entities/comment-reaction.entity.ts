@@ -1,15 +1,15 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Unique, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { Post } from '../../posts/entities/post.entity';
+import { Comment } from './comment.entity';
 
 export enum ReactionType {
     LIKE = 'LIKE',
     DISLIKE = 'DISLIKE',
 }
 
-@Entity('reactions')
-@Unique(['userId', 'postId'])
-export class Reaction {
+@Entity('comment_reactions')
+@Unique(['userId', 'commentId'])
+export class CommentReaction {
     @PrimaryGeneratedColumn()
     id: number;
 
@@ -22,14 +22,14 @@ export class Reaction {
     @Column({ name: 'user_id' })
     userId: string;
 
-    @ManyToOne(() => User, (user) => user.reactions, { onDelete: 'CASCADE' })
+    @ManyToOne(() => User, (user) => user.commentReactions, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'user_id' })
     user: User;
 
-    @Column({ name: 'post_id' })
-    postId: string;
+    @Column({ name: 'comment_id' })
+    commentId: string;
 
-    @ManyToOne(() => Post, (post) => post.reactions, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'post_id' })
-    post: Post;
+    @ManyToOne(() => Comment, (comment) => comment.reactions, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'comment_id' })
+    comment: Comment;
 }

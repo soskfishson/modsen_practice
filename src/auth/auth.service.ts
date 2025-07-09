@@ -7,8 +7,6 @@ import { JwtPayload } from './strageties/jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { UnauthorizedException } from '@nestjs/common';
-import { UserResponseDto } from '../users/dto/user-response.dto';
-import { plainToClass } from 'class-transformer';
 import { AuthResponseDto } from './dto/login-response.dto';
 import { RefreshResponseDto } from './dto/refresh-response.dto';
 
@@ -86,7 +84,6 @@ export class AuthService {
 
         return {
             access_token: accessToken,
-            user: plainToClass(UserResponseDto, dbUser),
         };
     }
 
@@ -106,7 +103,6 @@ export class AuthService {
         return {
             access_token: accessToken,
             refresh_token: refreshToken,
-            user: plainToClass(UserResponseDto, user),
         };
     }
 }

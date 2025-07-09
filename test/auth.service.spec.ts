@@ -257,7 +257,6 @@ describe('AuthService', () => {
             );
             expect(result).toEqual({
                 access_token: 'newAccessToken',
-                user: mockDbUser,
             });
         });
 

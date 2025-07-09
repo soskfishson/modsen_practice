@@ -9,8 +9,9 @@ import {
     JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { Reaction } from './reaction.entity';
-import { Attachment } from './attachment.entity';
+import { PostReaction } from '../../reactions/entities/post-reaction.entity';
+import { PostAttachment } from '../../attachments/entities/post-attachment.entity';
+import { Comment } from '../../comments/entities/comment.entity';
 
 @Entity('posts')
 export class Post {
@@ -50,15 +51,14 @@ export class Post {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    //TBA
-    // @OneToMany(() => Comment, (comment) => comment.post, { cascade: true })
-    // comments: Comment[];
+    @OneToMany(() => Comment, (comment) => comment.post, { cascade: true })
+    comments: Comment[];
 
-    @OneToMany(() => Reaction, (reaction) => reaction.post, { cascade: true })
-    reactions: Reaction[];
+    @OneToMany(() => PostReaction, (reaction) => reaction.post, { cascade: true })
+    reactions: PostReaction[];
 
-    @OneToMany(() => Attachment, (attachment) => attachment.post, {
+    @OneToMany(() => PostAttachment, (attachment) => attachment.post, {
         cascade: ['insert', 'update'],
     })
-    attachments: Attachment[];
+    attachments: PostAttachment[];
 }

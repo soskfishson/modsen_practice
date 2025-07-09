@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Attachment } from '../entities/attachment.entity';
+import { PostAttachment } from '../../attachments/entities/post-attachment.entity';
 import { UserResponseDto } from '../../users/dto/user-response.dto';
 
 export class PostResponseDto {
@@ -30,8 +30,8 @@ export class PostResponseDto {
     @ApiProperty()
     commentsCount: number;
 
-    @ApiProperty({ type: [Attachment] })
-    attachments: Attachment[];
+    @ApiProperty({ type: [PostAttachment] })
+    attachments: PostAttachment[];
 
     @ApiProperty()
     createdAt: Date;

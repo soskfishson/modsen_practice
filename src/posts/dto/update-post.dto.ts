@@ -1,25 +1,25 @@
 import { PartialType, OmitType } from '@nestjs/swagger';
 import { CreatePostDto } from './create-post.dto';
-import { CreateAttachmentDto } from './create-atachment.dto';
-import { UpdateAttachmentDto } from './update-attachment.dto';
+import { CreateAttachmentDto as BaseCreateAttachmentDto } from '../../attachments/dto/base-create-attachment.dto';
+import { UpdateAttachmentDto as BaseUpdateAttachmentDto } from '../../attachments/dto/base-update-attachment.dto';
 import { IsArray, IsOptional, ValidateNested, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdatePostDto extends PartialType(OmitType(CreatePostDto, ['attachments'] as const)) {
     @ApiProperty({
-        type: () => [CreateAttachmentDto],
+        type: () => [BaseCreateAttachmentDto],
         description: 'List of new attachments to add to the post',
         required: false,
     })
     @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
-    @Type(() => CreateAttachmentDto)
-    newAttachments?: CreateAttachmentDto[];
+    @Type(() => BaseCreateAttachmentDto)
+    newAttachments?: BaseCreateAttachmentDto[];
 
     @ApiProperty({
-        type: () => [UpdateAttachmentDto],
+        type: () => [BaseUpdateAttachmentDto],
         description:
             'List of existing attachments to update. Use `id` to identify, and `delete: true` to remove.',
         required: false,
@@ -27,8 +27,8 @@ export class UpdatePostDto extends PartialType(OmitType(CreatePostDto, ['attachm
     @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
-    @Type(() => UpdateAttachmentDto)
-    updatedAttachments?: UpdateAttachmentDto[];
+    @Type(() => BaseUpdateAttachmentDto)
+    updatedAttachments?: BaseUpdateAttachmentDto[];
 
     @ApiProperty({
         type: [String],

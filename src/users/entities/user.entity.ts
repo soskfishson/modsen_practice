@@ -8,7 +8,9 @@ import {
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Post } from '../../posts/entities/post.entity';
-import { Reaction } from '../../posts/entities/reaction.entity';
+import { Comment } from '../../comments/entities/comment.entity';
+import { PostReaction } from '../../reactions/entities/post-reaction.entity';
+import { CommentReaction } from '../../reactions/entities/comment-reaction.entity';
 
 @Entity('users')
 export class User {
@@ -50,10 +52,12 @@ export class User {
     @OneToMany(() => Post, (post) => post.author)
     posts: Post[];
 
-    //TBA
-    // @OneToMany(() => Comment, (comment) => comment.author)
-    // comments: Comment[];
+    @OneToMany(() => Comment, (comment) => comment.author)
+    comments: Comment[];
 
-    @OneToMany(() => Reaction, (reaction) => reaction.user)
-    reactions: Reaction[];
+    @OneToMany(() => PostReaction, (reaction) => reaction.user)
+    postReactions: PostReaction[];
+
+    @OneToMany(() => CommentReaction, (reaction) => reaction.user)
+    commentReactions: CommentReaction[];
 }

@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/swagger';
-import { CreateAttachmentDto } from './create-atachment.dto';
+import { CreateAttachmentDto } from './base-create-attachment.dto';
 import { IsUUID, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 

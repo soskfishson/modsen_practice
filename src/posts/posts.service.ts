@@ -8,14 +8,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { CreatePostDto } from './dto/create-post.dto';
 import { Post } from './entities/post.entity';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
-import { Attachment } from './entities/attachment.entity';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { FindPostsQueryDto } from './dto/find-post-query.dto';
 import { PaginatedPostResponseDto } from './dto/paginated-post-response.dto';
 import { AddReactionDto } from './dto/add-reaction.dto';
-import { Reaction } from './entities/reaction.entity';
-import { ReactionType } from './entities/reaction.entity';
+import { AttachmentsService } from '../attachments/attachments.service';
+import { PostAttachment } from '../attachments/entities/post-attachment.entity';
+import { ReactionsService } from '../reactions/reactions.service';
 
 interface CreatePostInput extends CreatePostDto {
     authorId: string;
@@ -26,12 +25,9 @@ export class PostsService {
     constructor(
         @InjectRepository(Post)
         private postsRepository: Repository<Post>,
-        @InjectRepository(Reaction)
-        private reactionRepository: Repository<Reaction>,
-        @InjectRepository(Attachment)
-        private attachmentRepository: Repository<Attachment>,
-        private cloudinaryService: CloudinaryService,
+        private attachmentsService: AttachmentsService,
         private dataSource: DataSource,
+        private reactionsService: ReactionsService,
     ) {}
 
     async create(createPostInput: CreatePostInput): Promise<Post> {
@@ -46,16 +42,12 @@ export class PostsService {
 
             if (attachmentDtos && attachmentDtos.length > 0) {
                 const attachmentPromises = attachmentDtos.map(async (dto) => {
-                    const buffer = Buffer.from(dto.fileContent, 'base64');
-                    const uploadResult = await this.cloudinaryService.uploadImage(buffer);
-
-                    const newAttachment = this.attachmentRepository.create({
-                        url: uploadResult.secure_url,
-                        publicId: uploadResult.public_id,
-                        description: dto.description,
-                        post: savedPost,
-                    });
-                    return transactionalEntityManager.save(newAttachment);
+                    return this.attachmentsService.createAttachment<PostAttachment>(
+                        dto,
+                        savedPost.id,
+                        'post',
+                        transactionalEntityManager,
+                    );
                 });
 
                 await Promise.all(attachmentPromises);
@@ -91,73 +83,61 @@ export class PostsService {
                 if (newAttachments && newAttachments.length > 0) {
                     const createdAttachments = await Promise.all(
                         newAttachments.map(async (dto) => {
-                            const buffer = Buffer.from(dto.fileContent, 'base64');
-                            const uploadResult = await this.cloudinaryService.uploadImage(buffer);
-
-                            const newAttachment = transactionalEntityManager.create(Attachment, {
-                                url: uploadResult.secure_url,
-                                publicId: uploadResult.public_id,
-                                description: dto.description,
-                                post: foundPost,
-                            });
-                            return transactionalEntityManager.save(newAttachment);
+                            return this.attachmentsService.createAttachment(
+                                dto,
+                                foundPost.id,
+                                'post',
+                                transactionalEntityManager,
+                            );
                         }),
                     ).catch((error) => {
                         throw error;
                     });
-                    foundPost.attachments = [...foundPost.attachments, ...createdAttachments];
+                    foundPost.attachments = [
+                        ...foundPost.attachments,
+                        ...(createdAttachments as PostAttachment[]),
+                    ];
                 }
 
                 if (updatedAttachments && updatedAttachments.length > 0) {
                     for (const dto of updatedAttachments) {
-                        const attachment = await transactionalEntityManager.findOne(Attachment, {
-                            where: { id: dto.id, post: { id: foundPost.id } },
-                        });
-
-                        if (attachment) {
-                            if (dto.delete) {
-                                try {
-                                    await this.cloudinaryService.deleteImage(attachment.publicId);
-                                    await transactionalEntityManager.delete(
-                                        Attachment,
-                                        attachment.id,
-                                    );
-                                } catch (error) {
-                                    throw error;
-                                }
-                            } else {
-                                Object.assign(attachment, { description: dto.description });
-                                await transactionalEntityManager.save(attachment);
-                                const index = foundPost.attachments.findIndex(
-                                    (att) => att.id === attachment.id,
-                                );
-                                if (index !== -1) {
-                                    foundPost.attachments[index] = attachment;
-                                }
+                        const updated = await this.attachmentsService.updateAttachment(
+                            dto,
+                            foundPost.id,
+                            'post',
+                            transactionalEntityManager,
+                        );
+                        if (updated) {
+                            const index = foundPost.attachments.findIndex(
+                                (att) => att.id === updated.id,
+                            );
+                            if (index !== -1) {
+                                foundPost.attachments[index] = updated as PostAttachment;
                             }
+                        } else if (dto.delete) {
+                            foundPost.attachments = foundPost.attachments.filter(
+                                (att) => att.id !== dto.id,
+                            );
                         }
                     }
                 }
 
                 if (deletedAttachmentIds && deletedAttachmentIds.length > 0) {
                     for (const attachmentId of deletedAttachmentIds) {
-                        const attachment = await transactionalEntityManager.findOne(Attachment, {
-                            where: { id: attachmentId, post: { id: foundPost.id } },
-                        });
-                        if (attachment) {
-                            try {
-                                await this.cloudinaryService.deleteImage(attachment.publicId);
-                                await transactionalEntityManager.delete(Attachment, attachment.id);
-                            } catch (error) {
-                                throw error;
-                            }
-                        }
+                        await this.attachmentsService.deleteAttachment(
+                            attachmentId,
+                            foundPost.id,
+                            'post',
+                            transactionalEntityManager,
+                        );
                     }
                 }
 
-                foundPost.attachments = await transactionalEntityManager.find(Attachment, {
-                    where: { post: { id: foundPost.id } },
-                });
+                foundPost.attachments = (await this.attachmentsService.findAttachmentsByParentId(
+                    foundPost.id,
+                    'post',
+                    transactionalEntityManager,
+                )) as PostAttachment[];
 
                 const finalPost = await transactionalEntityManager.save(foundPost);
 
@@ -166,6 +146,12 @@ export class PostsService {
                     relations: ['attachments', 'author'],
                 });
             } catch (transactionError) {
+                if (
+                    transactionError instanceof NotFoundException ||
+                    transactionError instanceof ForbiddenException
+                ) {
+                    throw transactionError;
+                }
                 throw new InternalServerErrorException(transactionError);
             }
         }) as unknown as Post;
@@ -173,34 +159,43 @@ export class PostsService {
 
     async remove(id: string, currentUserId: string): Promise<void> {
         return this.dataSource.transaction(async (transactionalEntityManager) => {
-            const post = await transactionalEntityManager.findOne(Post, {
-                where: { id },
-                relations: ['author', 'attachments'],
-            });
+            try {
+                const post = await transactionalEntityManager.findOne(Post, {
+                    where: { id },
+                    relations: ['author', 'attachments'],
+                });
 
-            if (!post) {
-                throw new NotFoundException(`Post with ID ${id} not found.`);
-            }
+                if (!post) {
+                    throw new NotFoundException(`Post with ID ${id} not found.`);
+                }
 
-            if (post.author.id !== currentUserId) {
-                throw new ForbiddenException('You are not allowed to delete this post.');
-            }
+                if (post.author.id !== currentUserId) {
+                    throw new ForbiddenException('You are not allowed to delete this post.');
+                }
 
-            if (post.attachments && post.attachments.length > 0) {
-                await Promise.all(
-                    post.attachments.map(async (attachment) => {
-                        try {
-                            await this.cloudinaryService.deleteImage(attachment.publicId);
-                        } catch (error) {
-                            throw new InternalServerErrorException(
-                                `Failed to delete attachment from Cloudinary: ${attachment.publicId}. ${error.message}`,
+                if (post.attachments && post.attachments.length > 0) {
+                    await Promise.all(
+                        post.attachments.map(async (attachment) => {
+                            await this.attachmentsService.deleteAttachment(
+                                attachment.id,
+                                post.id,
+                                'post',
+                                transactionalEntityManager,
                             );
-                        }
-                    }),
-                );
-            }
+                        }),
+                    );
+                }
 
-            await transactionalEntityManager.remove(post);
+                await transactionalEntityManager.remove(post);
+            } catch (transactionError) {
+                if (
+                    transactionError instanceof NotFoundException ||
+                    transactionError instanceof ForbiddenException
+                ) {
+                    throw transactionError;
+                }
+                throw new InternalServerErrorException(transactionError);
+            }
         });
     }
 
@@ -359,60 +354,14 @@ export class PostsService {
         };
     }
 
-    async reaction(id: string, addReactionDto: AddReactionDto) {
+    async reaction(userId: string, addReactionDto: AddReactionDto) {
         return this.dataSource.transaction(async (transactionalEntityManager) => {
-            const post = await transactionalEntityManager.findOne(Post, {
-                where: { id: addReactionDto.postId },
-            });
-
-            if (!post) {
-                throw new NotFoundException(`Post with ID ${addReactionDto.postId} not found.`);
-            }
-
-            const existingReaction = await transactionalEntityManager.findOne(Reaction, {
-                where: { userId: id, postId: addReactionDto.postId },
-            });
-
-            if (existingReaction) {
-                await transactionalEntityManager.delete(Reaction, existingReaction.id);
-
-                if (existingReaction.type === ReactionType.LIKE) {
-                    await this.postsRepository.decrement(
-                        { id: addReactionDto.postId },
-                        'likesCount',
-                        1,
-                    );
-                } else if (existingReaction.type === ReactionType.DISLIKE) {
-                    await this.postsRepository.decrement(
-                        { id: addReactionDto.postId },
-                        'dislikesCount',
-                        1,
-                    );
-                }
-            }
-
-            if (addReactionDto.type !== null) {
-                const newReaction = this.reactionRepository.create({
-                    type: addReactionDto.type,
-                    userId: id,
-                    postId: addReactionDto.postId,
-                });
-                await transactionalEntityManager.save(newReaction);
-
-                if (addReactionDto.type === ReactionType.LIKE) {
-                    await this.postsRepository.increment(
-                        { id: addReactionDto.postId },
-                        'likesCount',
-                        1,
-                    );
-                } else if (addReactionDto.type === ReactionType.DISLIKE) {
-                    await this.postsRepository.increment(
-                        { id: addReactionDto.postId },
-                        'dislikesCount',
-                        1,
-                    );
-                }
-            }
+            await this.reactionsService.addOrUpdateReaction(
+                addReactionDto,
+                userId,
+                'post',
+                transactionalEntityManager,
+            );
         });
     }
 }

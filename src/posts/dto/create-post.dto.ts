@@ -1,7 +1,7 @@
 import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { CreateAttachmentDto } from './create-atachment.dto';
+import { CreateAttachmentDto as BaseCreateAttachmentDto } from '../../attachments/dto/base-create-attachment.dto';
 
 export class CreatePostDto {
     @ApiProperty({ example: 'My title' })
@@ -14,13 +14,13 @@ export class CreatePostDto {
     content: string;
 
     @ApiProperty({
-        type: () => [CreateAttachmentDto],
+        type: () => [BaseCreateAttachmentDto],
         description: 'List of new attachments for the post',
         required: false,
     })
     @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
-    @Type(() => CreateAttachmentDto)
-    attachments?: CreateAttachmentDto[];
+    @Type(() => BaseCreateAttachmentDto)
+    attachments?: BaseCreateAttachmentDto[];
 }
