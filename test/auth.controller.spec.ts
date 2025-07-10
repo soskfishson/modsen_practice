@@ -51,7 +51,7 @@ describe('AuthController', () => {
                 displayName: 'Test User',
                 userDescription: 'A test user',
             };
-            const mockUserResponseDto: UserResponseDto = {
+            const _mockUserResponseDto: UserResponseDto = {
                 id: '1',
                 email: 'test@example.com',
                 username: 'testuser',
@@ -65,7 +65,6 @@ describe('AuthController', () => {
             const mockAuthResponse: AuthResponseDto = {
                 access_token: 'some_access_token',
                 refresh_token: 'some_refresh_token',
-                user: mockUserResponseDto,
             };
 
             jest.spyOn(authService, 'register').mockResolvedValue(mockAuthResponse);
@@ -79,21 +78,9 @@ describe('AuthController', () => {
     describe('login', () => {
         it('should login a user', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
-            const mockUserResponseDto: UserResponseDto = {
-                id: '1',
-                email: 'test@example.com',
-                username: 'testuser',
-                displayName: 'Test User',
-                userDescription: 'A test user',
-                isActive: true,
-                registrationDate: new Date(),
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            };
             const mockAuthResponse: AuthResponseDto = {
                 access_token: 'some_access_token',
                 refresh_token: 'some_refresh_token',
-                user: mockUserResponseDto,
             };
 
             jest.spyOn(authService, 'login').mockResolvedValue(mockAuthResponse);
@@ -119,20 +106,8 @@ describe('AuthController', () => {
         it('should refresh access token', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
             const refreshToken = 'some_refresh_token';
-            const mockUserResponseDto: UserResponseDto = {
-                id: '1',
-                email: 'test@example.com',
-                username: 'testuser',
-                displayName: 'Test User',
-                userDescription: 'A test user',
-                isActive: true,
-                registrationDate: new Date(),
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            };
             const mockAuthResponse: RefreshResponseDto = {
                 access_token: 'new_access_token',
-                user: mockUserResponseDto,
             };
 
             jest.spyOn(authService, 'refreshAccessToken').mockResolvedValue(mockAuthResponse);

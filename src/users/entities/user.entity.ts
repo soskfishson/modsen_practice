@@ -4,8 +4,13 @@ import {
     Column,
     CreateDateColumn,
     UpdateDateColumn,
+    OneToMany,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { Post } from '../../posts/entities/post.entity';
+import { Comment } from '../../comments/entities/comment.entity';
+import { PostReaction } from '../../reactions/entities/post-reaction.entity';
+import { CommentReaction } from '../../reactions/entities/comment-reaction.entity';
 
 @Entity('users')
 export class User {
@@ -22,10 +27,10 @@ export class User {
     @Exclude()
     password: string;
 
-    @Column()
+    @Column({ nullable: true })
     displayName: string;
 
-    @Column()
+    @Column({ type: 'text', nullable: true })
     userDescription: string;
 
     @Column({ default: false })
@@ -35,6 +40,7 @@ export class User {
     registrationDate: Date;
 
     @Column({ nullable: true })
+    @Exclude()
     refreshToken: string;
 
     @CreateDateColumn()
@@ -43,10 +49,15 @@ export class User {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    // TBA
-    // @OneToMany(() => Post, post => post.author)
-    // posts: Post[];
+    @OneToMany(() => Post, (post) => post.author)
+    posts: Post[];
 
-    // @OneToMany(() => Comment, comment => comment.author)
-    // comments: Comment[];
+    @OneToMany(() => Comment, (comment) => comment.author)
+    comments: Comment[];
+
+    @OneToMany(() => PostReaction, (reaction) => reaction.user)
+    postReactions: PostReaction[];
+
+    @OneToMany(() => CommentReaction, (reaction) => reaction.user)
+    commentReactions: CommentReaction[];
 }

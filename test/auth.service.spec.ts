@@ -62,6 +62,7 @@ describe('AuthService', () => {
                     provide: JwtService,
                     useValue: {
                         sign: jest.fn(),
+                        decode: jest.fn(),
                     },
                 },
                 {
@@ -216,7 +217,12 @@ describe('AuthService', () => {
 
     describe('logout', () => {
         it('should logout a user', async () => {
-            const mockUser = { id: '1', email: 'test@example.com' } as User;
+            const mockUser = {
+                id: '1',
+                email: 'test@example.com',
+                isActive: true,
+                refreshToken: 'someValidToken',
+            } as User;
             jest.spyOn(usersService, 'update').mockResolvedValueOnce(mockUser);
 
             await service.logout(mockUser);
@@ -231,6 +237,7 @@ describe('AuthService', () => {
         it('should refresh access token if valid refresh token', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
             const mockDbUser = { ...mockUser, refreshToken: 'validRefreshToken' } as User;
+            const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
 
             jest.spyOn(usersService, 'find').mockResolvedValueOnce({
                 data: [mockDbUser],
@@ -240,8 +247,13 @@ describe('AuthService', () => {
                 totalPages: 1,
             });
             jest.spyOn(jwtService, 'sign').mockReturnValueOnce('newAccessToken');
+            jest.spyOn(jwtService, 'decode').mockReturnValueOnce({
+                sub: mockUser.id,
+                email: mockUser.email,
+                exp: Math.floor(Date.now() / 1000) + 3600,
+            });
 
-            const result = await service.refreshAccessToken(mockUser, 'validRefreshToken');
+            const result = await service.refreshAccessToken(mockJwtPayload, 'validRefreshToken');
             expect(usersService.find).toHaveBeenCalledWith({
                 id: mockUser.id,
                 limit: 1,
@@ -256,12 +268,12 @@ describe('AuthService', () => {
             );
             expect(result).toEqual({
                 access_token: 'newAccessToken',
-                user: mockDbUser,
             });
         });
 
         it('should throw UnauthorizedException if user not found', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
+            const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
             jest.spyOn(usersService, 'find').mockResolvedValueOnce({
                 data: [],
                 total: 0,
@@ -270,7 +282,7 @@ describe('AuthService', () => {
                 totalPages: 0,
             });
 
-            await expect(service.refreshAccessToken(mockUser, 'someToken')).rejects.toThrow(
+            await expect(service.refreshAccessToken(mockJwtPayload, 'someToken')).rejects.toThrow(
                 UnauthorizedException,
             );
         });
@@ -278,6 +290,7 @@ describe('AuthService', () => {
         it('should throw UnauthorizedException if refresh token is invalid', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
             const mockDbUser = { ...mockUser, refreshToken: 'invalidRefreshToken' } as User;
+            const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
             jest.spyOn(usersService, 'find').mockResolvedValueOnce({
                 data: [mockDbUser],
                 total: 1,
@@ -286,7 +299,7 @@ describe('AuthService', () => {
                 totalPages: 1,
             });
 
-            await expect(service.refreshAccessToken(mockUser, 'wrongToken')).rejects.toThrow(
+            await expect(service.refreshAccessToken(mockJwtPayload, 'wrongToken')).rejects.toThrow(
                 UnauthorizedException,
             );
         });
@@ -294,6 +307,7 @@ describe('AuthService', () => {
         it('should throw UnauthorizedException if refresh token is null', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
             const mockDbUser = { ...mockUser, refreshToken: null } as unknown as User;
+            const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
             jest.spyOn(usersService, 'find').mockResolvedValueOnce({
                 data: [mockDbUser],
                 total: 1,
@@ -302,9 +316,43 @@ describe('AuthService', () => {
                 totalPages: 1,
             });
 
-            await expect(service.refreshAccessToken(mockUser, 'someToken')).rejects.toThrow(
+            await expect(service.refreshAccessToken(mockJwtPayload, 'someToken')).rejects.toThrow(
                 UnauthorizedException,
             );
+        });
+
+        it('should throw UnauthorizedException and invalidate token if refresh token has expired', async () => {
+            const mockUser = { id: '1', email: 'test@example.com' } as User;
+            const mockDbUser = { ...mockUser, refreshToken: 'expiredRefreshToken' } as User;
+            const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
+            const expiredTimestamp = Math.floor(Date.now() / 1000) - 3600;
+
+            jest.spyOn(usersService, 'find').mockResolvedValueOnce({
+                data: [mockDbUser],
+                total: 1,
+                page: 1,
+                limit: 1,
+                totalPages: 1,
+            });
+            jest.spyOn(jwtService, 'decode').mockReturnValueOnce({
+                sub: mockUser.id,
+                email: mockUser.email,
+                exp: expiredTimestamp,
+            });
+            jest.spyOn(usersService, 'update').mockResolvedValueOnce({
+                ...mockDbUser,
+                refreshToken: null,
+                isActive: false,
+            } as unknown as User);
+
+            await expect(
+                service.refreshAccessToken(mockJwtPayload, 'expiredRefreshToken'),
+            ).rejects.toThrow(new UnauthorizedException('Refresh token has expired'));
+
+            expect(usersService.update).toHaveBeenCalledWith(mockUser.id, {
+                refreshToken: null,
+                isActive: false,
+            });
         });
     });
 });
