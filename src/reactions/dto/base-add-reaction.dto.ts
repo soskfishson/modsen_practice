@@ -15,4 +15,4 @@ export class BaseAddReactionDto {
     })
     @IsString()
     parentId: string;
-} 
+}

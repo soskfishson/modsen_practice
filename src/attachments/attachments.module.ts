@@ -10,4 +10,4 @@ import { AttachmentsService } from './attachments.service';
     providers: [AttachmentsService],
     exports: [AttachmentsService],
 })
-export class AttachmentsModule {} 
+export class AttachmentsModule {}

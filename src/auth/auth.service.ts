@@ -53,6 +53,9 @@ export class AuthService {
     }
 
     async logout(user: User) {
+        if (!user.isActive && !user.refreshToken) {
+            throw new UnauthorizedException();
+        }
         await this.usersService.update(user.id, {
             isActive: false,
             refreshToken: null,
@@ -74,6 +77,22 @@ export class AuthService {
 
         if (!dbUser.refreshToken || dbUser.refreshToken !== refreshToken) {
             throw new UnauthorizedException('Invalid or revoked refresh token');
+        }
+
+        const decodedRefreshToken: any = this.jwtService.decode(refreshToken);
+
+        if (!decodedRefreshToken || !decodedRefreshToken.exp) {
+            throw new UnauthorizedException('Invalid refresh token payload');
+        }
+
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+
+        if (decodedRefreshToken.exp < currentTimestamp) {
+            await this.usersService.update(user.sub, {
+                refreshToken: null,
+                isActive: false,
+            } as UpdateUserDto);
+            throw new UnauthorizedException('Refresh token has expired');
         }
 
         const payload: JwtPayload = { sub: user.sub, email: user.email };

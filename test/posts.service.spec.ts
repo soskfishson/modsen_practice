@@ -14,7 +14,7 @@ import { User } from '../src/users/entities/user.entity';
 import { UpdatePostDto } from '../src/posts/dto/update-post.dto';
 import { FindPostsQueryDto } from '../src/posts/dto/find-post-query.dto';
 import { ReactionType } from '../src/reactions/interfaces/reaction.interface';
-import { AddReactionDto } from '../src/posts/dto/add-reaction.dto';
+import { BaseAddReactionDto } from '../src/reactions/dto/base-add-reaction.dto';
 import { AttachmentsService } from '../src/attachments/attachments.service';
 import { ReactionsService } from '../src/reactions/reactions.service';
 
@@ -60,6 +60,7 @@ describe('PostsService', () => {
 
     const mockReactionsService = {
         addOrUpdateReaction: jest.fn() as jest.Mock<any, any>,
+        removeAllReactionsForParent: jest.fn() as jest.Mock<any, any>,
     };
 
     const mockTransactionalEntityManager = {
@@ -118,6 +119,7 @@ describe('PostsService', () => {
         mockAttachmentsService.findAttachmentsByParentId.mockClear();
 
         mockReactionsService.addOrUpdateReaction.mockClear();
+        mockReactionsService.removeAllReactionsForParent.mockClear();
 
         mockQueryBuilder = {
             leftJoinAndSelect: jest.fn().mockReturnThis() as jest.Mock<any, any>,
@@ -756,10 +758,11 @@ describe('PostsService', () => {
             mockPostRepository.increment.mockClear();
             mockPostRepository.decrement.mockClear();
             mockReactionsService.addOrUpdateReaction.mockClear();
+            mockReactionsService.removeAllReactionsForParent.mockClear();
         });
 
         it('should add a LIKE reaction to a post', async () => {
-            const addReactionDto: AddReactionDto = {
+            const addReactionDto: BaseAddReactionDto = {
                 parentId: mockPostId,
                 type: ReactionType.LIKE,
             };
@@ -775,7 +778,7 @@ describe('PostsService', () => {
         });
 
         it('should add a DISLIKE reaction to a post', async () => {
-            const addReactionDto: AddReactionDto = {
+            const addReactionDto: BaseAddReactionDto = {
                 parentId: mockPostId,
                 type: ReactionType.DISLIKE,
             };
@@ -791,7 +794,7 @@ describe('PostsService', () => {
         });
 
         it('should remove an existing LIKE reaction', async () => {
-            const addReactionDto: AddReactionDto = { parentId: mockPostId, type: null };
+            const addReactionDto: BaseAddReactionDto = { parentId: mockPostId, type: null };
 
             await service.reaction(mockUser.id, addReactionDto);
 
@@ -804,7 +807,7 @@ describe('PostsService', () => {
         });
 
         it('should remove an existing DISLIKE reaction', async () => {
-            const addReactionDto: AddReactionDto = { parentId: mockPostId, type: null };
+            const addReactionDto: BaseAddReactionDto = { parentId: mockPostId, type: null };
 
             await service.reaction(mockUser.id, addReactionDto);
 
@@ -817,7 +820,7 @@ describe('PostsService', () => {
         });
 
         it('should change reaction from LIKE to DISLIKE', async () => {
-            const addReactionDto: AddReactionDto = {
+            const addReactionDto: BaseAddReactionDto = {
                 parentId: mockPostId,
                 type: ReactionType.DISLIKE,
             };
@@ -833,7 +836,7 @@ describe('PostsService', () => {
         });
 
         it('should change reaction from DISLIKE to LIKE', async () => {
-            const addReactionDto: AddReactionDto = {
+            const addReactionDto: BaseAddReactionDto = {
                 parentId: mockPostId,
                 type: ReactionType.LIKE,
             };
@@ -849,7 +852,7 @@ describe('PostsService', () => {
         });
 
         it('should throw NotFoundException if post not found', async () => {
-            const addReactionDto: AddReactionDto = {
+            const addReactionDto: BaseAddReactionDto = {
                 parentId: 'non-existent-id',
                 type: ReactionType.LIKE,
             };
@@ -860,7 +863,7 @@ describe('PostsService', () => {
         });
 
         it('should throw an error if transaction fails', async () => {
-            const addReactionDto: AddReactionDto = {
+            const addReactionDto: BaseAddReactionDto = {
                 parentId: mockPostId,
                 type: ReactionType.LIKE,
             };

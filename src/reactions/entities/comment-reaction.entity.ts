@@ -28,4 +28,4 @@ export class CommentReaction {
     @ManyToOne(() => Comment, (comment) => comment.reactions, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'comment_id' })
     comment: Comment;
-} 
+}

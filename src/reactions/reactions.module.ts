@@ -5,10 +5,8 @@ import { PostReaction } from './entities/post-reaction.entity';
 import { CommentReaction } from './entities/comment-reaction.entity';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([PostReaction, CommentReaction])
-    ],
+    imports: [TypeOrmModule.forFeature([PostReaction, CommentReaction])],
     providers: [ReactionsService],
     exports: [ReactionsService],
 })
-export class ReactionsModule {} 
+export class ReactionsModule {}

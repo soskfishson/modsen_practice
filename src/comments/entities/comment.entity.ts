@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Post } from '../../posts/entities/post.entity';
-import { CommentReaction } from './comment-reaction.entity';
+import { CommentReaction } from '../../reactions/entities/comment-reaction.entity';
 import { CommentAttachment } from '../../attachments/entities/comment-attachment.entity';
 
 @Entity('comments')

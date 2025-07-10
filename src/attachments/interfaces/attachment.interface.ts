@@ -3,4 +3,4 @@ export interface IAttachment {
     url: string;
     publicId: string;
     description?: string;
-} 
+}

@@ -78,11 +78,12 @@ export class UsersService {
         }
 
         if (search) {
+            const searchTerm = `%${search}%`;
             queryBuilder.andWhere(
                 new Brackets((qb) => {
-                    qb.where('user.username ILIKE :search', { search: `%${search}%` })
-                        .orWhere('user.email ILIKE :search', { search: `%${search}%` })
-                        .orWhere('user.displayName ILIKE :search', { search: `%${search}%` });
+                    qb.where('user.username ILIKE :searchTerm', { searchTerm })
+                        .orWhere('user.email ILIKE :searchTerm', { searchTerm })
+                        .orWhere('user.displayName ILIKE :searchTerm', { searchTerm });
                 }),
             );
         }

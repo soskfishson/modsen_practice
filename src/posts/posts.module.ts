@@ -7,11 +7,7 @@ import { AttachmentsModule } from '../attachments/attachments.module';
 import { ReactionsModule } from '../reactions/reactions.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Post]),
-        AttachmentsModule,
-        ReactionsModule,
-    ],
+    imports: [TypeOrmModule.forFeature([Post]), AttachmentsModule, ReactionsModule],
     controllers: [PostsController],
     providers: [PostsService],
     exports: [PostsService],

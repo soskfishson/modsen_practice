@@ -112,4 +112,16 @@ export class ReactionsService {
             }
         }
     }
+
+    async removeAllReactionsForParent(
+        parentId: string,
+        parentType: 'post' | 'comment',
+        transactionalEntityManager: EntityManager,
+    ): Promise<void> {
+        if (parentType === 'post') {
+            await transactionalEntityManager.delete(PostReaction, { postId: parentId });
+        } else {
+            await transactionalEntityManager.delete(CommentReaction, { commentId: parentId });
+        }
+    }
 }
