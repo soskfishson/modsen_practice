@@ -204,9 +204,18 @@ export class CommentsService {
             id,
             authorId,
             postId,
-            parentCommentId,
+            parentCommentId: rawParentCommentId,
             ...filters
         } = queryDto;
+
+        let parentCommentId: string | null | undefined = rawParentCommentId;
+
+        if (
+            typeof parentCommentId === 'string' &&
+            parentCommentId.toLowerCase().trim() === 'null'
+        ) {
+            parentCommentId = null;
+        }
 
         const queryBuilder = this.commentsRepository
             .createQueryBuilder('comment')
@@ -316,7 +325,13 @@ export class CommentsService {
             queryBuilder.andWhere('comment.postId = :postId', { postId });
         }
 
-        if (parentCommentId) {
+        if (
+            parentCommentId === null ||
+            parentCommentId === undefined ||
+            parentCommentId === 'null'
+        ) {
+            queryBuilder.andWhere('comment.parentCommentId IS NULL');
+        } else {
             queryBuilder.andWhere('comment.parentCommentId = :parentCommentId', {
                 parentCommentId,
             });
