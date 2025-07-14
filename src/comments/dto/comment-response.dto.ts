@@ -1,13 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { PostAttachment } from '../../attachments/entities/post-attachment.entity';
+import { CommentAttachment } from '../../attachments/entities/comment-attachment.entity';
 import { UserResponseDto } from '../../users/dto/user-response.dto';
 
-export class PostResponseDto {
+export class CommentResponseDto {
     @ApiProperty()
     id: string;
-
-    @ApiProperty()
-    postTitle: string;
 
     @ApiProperty()
     content: string;
@@ -18,8 +15,11 @@ export class PostResponseDto {
     @ApiProperty({ type: () => UserResponseDto })
     author: UserResponseDto;
 
-    @ApiProperty()
-    viewsCount: number;
+    @ApiProperty({ nullable: true })
+    postId?: string;
+
+    @ApiProperty({ nullable: true })
+    parentCommentId?: string;
 
     @ApiProperty()
     likesCount: number;
@@ -27,15 +27,15 @@ export class PostResponseDto {
     @ApiProperty()
     dislikesCount: number;
 
-    @ApiProperty()
-    commentsCount: number;
-
-    @ApiProperty({ type: [PostAttachment] })
-    attachments: PostAttachment[];
+    @ApiProperty({ type: [CommentAttachment] })
+    attachments: CommentAttachment[];
 
     @ApiProperty()
     createdAt: Date;
 
     @ApiProperty()
     updatedAt: Date;
+
+    @ApiProperty({ type: [() => CommentResponseDto], nullable: true })
+    replies?: CommentResponseDto[];
 }

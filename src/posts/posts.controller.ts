@@ -23,7 +23,7 @@ import { UpdatePostDto } from './dto/update-post.dto';
 import { Post as PostEntity } from './entities/post.entity';
 import { FindPostsQueryDto } from './dto/find-post-query.dto';
 import { PaginatedPostResponseDto } from './dto/paginated-post-response.dto';
-import { AddReactionDto } from './dto/add-reaction.dto';
+import { BaseAddReactionDto } from '../reactions/dto/base-add-reaction.dto';
 import { UserId } from '../common/decorators/user-id.decorator';
 
 @ApiTags('posts')
@@ -95,7 +95,7 @@ export class PostsController {
     @ApiResponse({ status: 401, description: 'Unauthorized.' })
     @ApiResponse({ status: 404, description: 'Post not found.' })
     async reaction(
-        @Body() addReactionDto: AddReactionDto,
+        @Body() addReactionDto: BaseAddReactionDto,
         @UserId() currentUserId: string,
     ): Promise<void> {
         await this.postsService.reaction(currentUserId, addReactionDto);

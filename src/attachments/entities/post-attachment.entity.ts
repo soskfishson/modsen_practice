@@ -1,8 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Post } from './post.entity';
+import { Post } from '../../posts/entities/post.entity';
 
-@Entity('attachments')
-export class Attachment {
+@Entity('post_attachments')
+export class PostAttachment {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 

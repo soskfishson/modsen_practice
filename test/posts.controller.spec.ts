@@ -8,8 +8,8 @@ import { UpdatePostDto } from '../src/posts/dto/update-post.dto';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { FindPostsQueryDto } from '../src/posts/dto/find-post-query.dto';
 import { PaginatedPostResponseDto } from '../src/posts/dto/paginated-post-response.dto';
-import { AddReactionDto } from '../src/posts/dto/add-reaction.dto';
-import { ReactionType } from '../src/posts/entities/reaction.entity';
+import { BaseAddReactionDto } from '../src/reactions/dto/base-add-reaction.dto';
+import { ReactionType } from '../src/reactions/interfaces/reaction.interface';
 
 describe('PostsController', () => {
     let controller: PostsController;
@@ -63,7 +63,8 @@ describe('PostsController', () => {
                 updatedAt: new Date(),
                 attachments: [],
                 reactions: [],
-            } as Post;
+                comments: [],
+            } as unknown as Post;
 
             mockPostsService.create.mockResolvedValue(expectedPost);
 
@@ -127,7 +128,8 @@ describe('PostsController', () => {
             updatedAt: new Date(),
             attachments: [],
             reactions: [],
-        } as Post;
+            comments: [],
+        } as unknown as Post;
 
         it('should update a post', async () => {
             const updatePostDto: UpdatePostDto = { postTitle: 'Updated Title' };
@@ -199,7 +201,10 @@ describe('PostsController', () => {
         const mockPostId = 'post-uuid';
 
         it('should add a reaction to a post', async () => {
-            const addReactionDto: AddReactionDto = { postId: mockPostId, type: ReactionType.LIKE };
+            const addReactionDto: BaseAddReactionDto = {
+                parentId: mockPostId,
+                type: ReactionType.LIKE,
+            };
             mockPostsService.reaction.mockResolvedValue(undefined);
 
             await controller.reaction(addReactionDto, mockUser.id);
@@ -208,8 +213,8 @@ describe('PostsController', () => {
         });
 
         it('should throw NotFoundException if post not found', async () => {
-            const addReactionDto: AddReactionDto = {
-                postId: 'non-existent-id',
+            const addReactionDto: BaseAddReactionDto = {
+                parentId: 'non-existent-id',
                 type: ReactionType.LIKE,
             };
             mockPostsService.reaction.mockRejectedValue(new NotFoundException());

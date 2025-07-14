@@ -1,17 +1,13 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Unique, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Post } from '../../posts/entities/post.entity';
+import { ReactionType } from '../interfaces/reaction.interface';
 
-export enum ReactionType {
-    LIKE = 'LIKE',
-    DISLIKE = 'DISLIKE',
-}
-
-@Entity('reactions')
+@Entity('post_reactions')
 @Unique(['userId', 'postId'])
-export class Reaction {
-    @PrimaryGeneratedColumn()
-    id: number;
+export class PostReaction {
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column({
         type: 'enum',
@@ -22,7 +18,7 @@ export class Reaction {
     @Column({ name: 'user_id' })
     userId: string;
 
-    @ManyToOne(() => User, (user) => user.reactions, { onDelete: 'CASCADE' })
+    @ManyToOne(() => User, (user) => user.postReactions, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'user_id' })
     user: User;
 

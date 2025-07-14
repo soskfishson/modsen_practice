@@ -7,8 +7,6 @@ import { JwtPayload } from './strageties/jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { UnauthorizedException } from '@nestjs/common';
-import { UserResponseDto } from '../users/dto/user-response.dto';
-import { plainToClass } from 'class-transformer';
 import { AuthResponseDto } from './dto/login-response.dto';
 import { RefreshResponseDto } from './dto/refresh-response.dto';
 
@@ -55,6 +53,9 @@ export class AuthService {
     }
 
     async logout(user: User) {
+        if (!user.isActive && !user.refreshToken) {
+            throw new UnauthorizedException();
+        }
         await this.usersService.update(user.id, {
             isActive: false,
             refreshToken: null,
@@ -78,6 +79,22 @@ export class AuthService {
             throw new UnauthorizedException('Invalid or revoked refresh token');
         }
 
+        const decodedRefreshToken: any = this.jwtService.decode(refreshToken);
+
+        if (!decodedRefreshToken || !decodedRefreshToken.exp) {
+            throw new UnauthorizedException('Invalid refresh token payload');
+        }
+
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+
+        if (decodedRefreshToken.exp < currentTimestamp) {
+            await this.usersService.update(user.sub, {
+                refreshToken: null,
+                isActive: false,
+            } as UpdateUserDto);
+            throw new UnauthorizedException('Refresh token has expired');
+        }
+
         const payload: JwtPayload = { sub: user.sub, email: user.email };
         const accessToken = this.jwtService.sign(payload, {
             secret: this.configService.get<string>('JWT_SECRET'),
@@ -86,7 +103,6 @@ export class AuthService {
 
         return {
             access_token: accessToken,
-            user: plainToClass(UserResponseDto, dbUser),
         };
     }
 
@@ -106,7 +122,6 @@ export class AuthService {
         return {
             access_token: accessToken,
             refresh_token: refreshToken,
-            user: plainToClass(UserResponseDto, user),
         };
     }
 }

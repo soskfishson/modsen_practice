@@ -3,11 +3,7 @@ import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { CreateAttachmentDto as BaseCreateAttachmentDto } from '../../attachments/dto/base-create-attachment.dto';
 
-export class CreatePostDto {
-    @ApiProperty({ example: 'My title' })
-    @IsString()
-    postTitle: string;
-
+export class CreateCommentDto {
     @ApiProperty({ example: 'My post content' })
     @IsOptional()
     @IsString()
@@ -23,4 +19,13 @@ export class CreatePostDto {
     @ValidateNested({ each: true })
     @Type(() => BaseCreateAttachmentDto)
     attachments?: BaseCreateAttachmentDto[];
+
+    @IsString()
+    @ApiProperty({ description: 'Post this comment refers to', example: 'abc1234411...' })
+    postId: string;
+
+    @IsString()
+    @IsOptional()
+    @ApiProperty({ description: 'Comment this comment refers to', example: 'abc1234411...' })
+    parentCommentId?: string;
 }

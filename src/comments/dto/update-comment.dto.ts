@@ -1,12 +1,14 @@
 import { PartialType, OmitType } from '@nestjs/swagger';
-import { CreatePostDto } from './create-post.dto';
+import { CreateCommentDto } from './create-comment.dto';
 import { CreateAttachmentDto as BaseCreateAttachmentDto } from '../../attachments/dto/base-create-attachment.dto';
 import { UpdateAttachmentDto as BaseUpdateAttachmentDto } from '../../attachments/dto/base-update-attachment.dto';
 import { IsArray, IsOptional, ValidateNested, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class UpdatePostDto extends PartialType(OmitType(CreatePostDto, ['attachments'] as const)) {
+export class UpdateCommentDto extends PartialType(
+    OmitType(CreateCommentDto, ['attachments'] as const),
+) {
     @ApiProperty({
         type: () => [BaseCreateAttachmentDto],
         description: 'List of new attachments to add to the post',

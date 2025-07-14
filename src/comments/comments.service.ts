@@ -1,52 +1,51 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import {
-    Injectable,
+    InternalServerErrorException,
     NotFoundException,
     ForbiddenException,
-    InternalServerErrorException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { CreatePostDto } from './dto/create-post.dto';
-import { Post } from './entities/post.entity';
-import { UpdatePostDto } from './dto/update-post.dto';
-import { FindPostsQueryDto } from './dto/find-post-query.dto';
-import { PaginatedPostResponseDto } from './dto/paginated-post-response.dto';
-import { BaseAddReactionDto } from '../reactions/dto/base-add-reaction.dto';
 import { AttachmentsService } from '../attachments/attachments.service';
-import { PostAttachment } from '../attachments/entities/post-attachment.entity';
 import { ReactionsService } from '../reactions/reactions.service';
-import { validatePostOwnership } from './utils/post-validation.util';
+import { Comment } from './entities/comment.entity';
+import { CommentAttachment } from '../attachments/entities/comment-attachment.entity';
+import { BaseAddReactionDto } from '../reactions/dto/base-add-reaction.dto';
+import { validateCommentOwnership } from './utils/comment-validation.util';
+import { CreateCommentDto } from './dto/create-comment.dto';
+import { UpdateCommentDto } from './dto/update-comment.dto';
+import { FindCommentsQueryDto } from './dto/find-comment-query.dto';
+import { PaginatedCommentResponseDto } from './dto/paginated-comment-response.dto';
 
-interface CreatePostInput extends CreatePostDto {
+interface CreateCommentInput extends CreateCommentDto {
     authorId: string;
 }
 
 @Injectable()
-export class PostsService {
+export class CommentsService {
     constructor(
-        @InjectRepository(Post)
-        private postsRepository: Repository<Post>,
+        @InjectRepository(Comment)
+        private commentsRepository: Repository<Comment>,
         private attachmentsService: AttachmentsService,
         private dataSource: DataSource,
         private reactionsService: ReactionsService,
     ) {}
-
-    async create(createPostInput: CreatePostInput): Promise<Post> {
-        const { attachments: attachmentDtos, authorId, ...postData } = createPostInput;
+    async create(createCommentInput: CreateCommentInput): Promise<Comment> {
+        const { attachments: attachmentDtos, authorId, ...commentData } = createCommentInput;
 
         return this.dataSource.transaction(async (transactionalEntityManager) => {
-            const newPost = this.postsRepository.create({
-                ...postData,
+            const newComment = this.commentsRepository.create({
+                ...commentData,
                 author: { id: authorId },
             });
-            const savedPost = await transactionalEntityManager.save(newPost);
+            const savedComment = await transactionalEntityManager.save(newComment);
 
             if (attachmentDtos && attachmentDtos.length > 0) {
                 const attachmentPromises = attachmentDtos.map(async (dto) => {
-                    return this.attachmentsService.createAttachment<PostAttachment>(
+                    return this.attachmentsService.createAttachment<CommentAttachment>(
                         dto,
-                        savedPost.id,
-                        'post',
+                        savedComment.id,
+                        'comment',
                         transactionalEntityManager,
                     );
                 });
@@ -54,40 +53,44 @@ export class PostsService {
                 await Promise.all(attachmentPromises);
             }
 
-            return savedPost;
+            return savedComment;
         });
     }
 
-    async update(id: string, updatePostDto: UpdatePostDto, currentUserId: string): Promise<Post> {
-        const { newAttachments, updatedAttachments, deletedAttachmentIds, ...postData } =
-            updatePostDto;
+    async update(
+        id: string,
+        updateCommentDto: UpdateCommentDto,
+        currentUserId: string,
+    ): Promise<Comment> {
+        const { newAttachments, updatedAttachments, deletedAttachmentIds, ...commentData } =
+            updateCommentDto;
 
         return this.dataSource.transaction(async (transactionalEntityManager) => {
             try {
-                const foundPost = await validatePostOwnership(
+                const foundComment = await validateCommentOwnership(
                     id,
                     currentUserId,
                     transactionalEntityManager,
                 );
 
-                Object.assign(foundPost, postData);
+                Object.assign(foundComment, commentData);
 
                 if (newAttachments && newAttachments.length > 0) {
                     const createdAttachments = await Promise.all(
                         newAttachments.map(async (dto) => {
                             return this.attachmentsService.createAttachment(
                                 dto,
-                                foundPost.id,
-                                'post',
+                                foundComment.id,
+                                'comment',
                                 transactionalEntityManager,
                             );
                         }),
                     ).catch((error) => {
                         throw error;
                     });
-                    foundPost.attachments = [
-                        ...foundPost.attachments,
-                        ...(createdAttachments as PostAttachment[]),
+                    foundComment.attachments = [
+                        ...foundComment.attachments,
+                        ...(createdAttachments as CommentAttachment[]),
                     ];
                 }
 
@@ -95,19 +98,19 @@ export class PostsService {
                     for (const dto of updatedAttachments) {
                         const updated = await this.attachmentsService.updateAttachment(
                             dto,
-                            foundPost.id,
-                            'post',
+                            foundComment.id,
+                            'comment',
                             transactionalEntityManager,
                         );
                         if (updated) {
-                            const index = foundPost.attachments.findIndex(
+                            const index = foundComment.attachments.findIndex(
                                 (att) => att.id === updated.id,
                             );
                             if (index !== -1) {
-                                foundPost.attachments[index] = updated as PostAttachment;
+                                foundComment.attachments[index] = updated as CommentAttachment;
                             }
                         } else if (dto.delete) {
-                            foundPost.attachments = foundPost.attachments.filter(
+                            foundComment.attachments = foundComment.attachments.filter(
                                 (att) => att.id !== dto.id,
                             );
                         }
@@ -118,23 +121,23 @@ export class PostsService {
                     for (const attachmentId of deletedAttachmentIds) {
                         await this.attachmentsService.deleteAttachment(
                             attachmentId,
-                            foundPost.id,
-                            'post',
+                            foundComment.id,
+                            'comment',
                             transactionalEntityManager,
                         );
                     }
                 }
 
-                foundPost.attachments = (await this.attachmentsService.findAttachmentsByParentId(
-                    foundPost.id,
-                    'post',
+                foundComment.attachments = (await this.attachmentsService.findAttachmentsByParentId(
+                    foundComment.id,
+                    'comment',
                     transactionalEntityManager,
-                )) as PostAttachment[];
+                )) as CommentAttachment[];
 
-                const finalPost = await transactionalEntityManager.save(foundPost);
+                const finalComment = await transactionalEntityManager.save(foundComment);
 
-                return transactionalEntityManager.findOne(Post, {
-                    where: { id: finalPost.id },
+                return transactionalEntityManager.findOne(Comment, {
+                    where: { id: finalComment.id },
                     relations: ['attachments', 'author'],
                 });
             } catch (transactionError) {
@@ -146,25 +149,25 @@ export class PostsService {
                 }
                 throw new InternalServerErrorException(transactionError);
             }
-        }) as unknown as Post;
+        }) as unknown as Comment;
     }
 
     async remove(id: string, currentUserId: string): Promise<void> {
         return this.dataSource.transaction(async (transactionalEntityManager) => {
             try {
-                const post = await validatePostOwnership(
+                const comment = await validateCommentOwnership(
                     id,
                     currentUserId,
                     transactionalEntityManager,
                 );
 
-                if (post.attachments && post.attachments.length > 0) {
+                if (comment.attachments && comment.attachments.length > 0) {
                     await Promise.all(
-                        post.attachments.map(async (attachment) => {
+                        comment.attachments.map(async (attachment) => {
                             await this.attachmentsService.deleteAttachment(
                                 attachment.id,
-                                post.id,
-                                'post',
+                                comment.id,
+                                'comment',
                                 transactionalEntityManager,
                             );
                         }),
@@ -172,12 +175,12 @@ export class PostsService {
                 }
 
                 await this.reactionsService.removeAllReactionsForParent(
-                    post.id,
-                    'post',
+                    comment.id,
+                    'comment',
                     transactionalEntityManager,
                 );
 
-                await transactionalEntityManager.remove(post);
+                await transactionalEntityManager.remove(comment);
             } catch (transactionError) {
                 if (
                     transactionError instanceof NotFoundException ||
@@ -190,7 +193,7 @@ export class PostsService {
         });
     }
 
-    async find(queryDto: FindPostsQueryDto): Promise<PaginatedPostResponseDto> {
+    async find(queryDto: FindCommentsQueryDto): Promise<PaginatedCommentResponseDto> {
         const {
             page = 1,
             limit = 10,
@@ -200,32 +203,44 @@ export class PostsService {
             fields,
             id,
             authorId,
+            postId,
+            parentCommentId: rawParentCommentId,
             ...filters
         } = queryDto;
 
-        const queryBuilder = this.postsRepository
-            .createQueryBuilder('post')
-            .leftJoinAndSelect('post.author', 'author')
-            .leftJoinAndSelect('post.attachments', 'attachments');
+        let parentCommentId: string | null | undefined = rawParentCommentId;
 
-        const validFields: (keyof Post)[] = [
+        if (
+            typeof parentCommentId === 'string' &&
+            parentCommentId.toLowerCase().trim() === 'null'
+        ) {
+            parentCommentId = null;
+        }
+
+        const queryBuilder = this.commentsRepository
+            .createQueryBuilder('comment')
+            .leftJoinAndSelect('comment.author', 'author')
+            .leftJoinAndSelect('comment.attachments', 'attachments')
+            .leftJoinAndSelect('comment.post', 'post')
+            .leftJoinAndSelect('comment.parentComment', 'parentComment');
+
+        const validFields: (keyof Comment)[] = [
             'id',
-            'postTitle',
             'content',
             'authorId',
-            'viewsCount',
             'likesCount',
             'dislikesCount',
-            'commentsCount',
             'createdAt',
             'updatedAt',
+            'postId',
+            'parentCommentId',
         ];
 
         if (fields) {
-            const requestedFields = fields.split(',') as (keyof Post)[];
+            const requestedFields = fields.split(',') as (keyof Comment)[];
             const selectedFields = requestedFields.filter((field) => validFields.includes(field));
             if (selectedFields.length > 0) {
-                queryBuilder.select(selectedFields.map((field) => `post.${field}`));
+                queryBuilder.select(selectedFields.map((field) => `comment.${field}`));
                 if (requestedFields.includes('author')) {
                     queryBuilder.addSelect([
                         'author.id',
@@ -247,8 +262,14 @@ export class PostsService {
                         'attachments.description',
                     ]);
                 }
+                if (requestedFields.includes('post')) {
+                    queryBuilder.addSelect(['post.id', 'post.postTitle', 'post.content']);
+                }
+                if (requestedFields.includes('parentComment')) {
+                    queryBuilder.addSelect(['parentComment.id', 'parentComment.content']);
+                }
             } else {
-                queryBuilder.select(validFields.map((field) => `post.${field}`));
+                queryBuilder.select(validFields.map((field) => `comment.${field}`));
                 queryBuilder.addSelect([
                     'author.id',
                     'author.username',
@@ -266,9 +287,11 @@ export class PostsService {
                     'attachments.publicId',
                     'attachments.description',
                 ]);
+                queryBuilder.addSelect(['post.id', 'post.postTitle', 'post.content']);
+                queryBuilder.addSelect(['parentComment.id', 'parentComment.content']);
             }
         } else {
-            queryBuilder.select(validFields.map((field) => `post.${field}`));
+            queryBuilder.select(validFields.map((field) => `comment.${field}`));
             queryBuilder.addSelect([
                 'author.id',
                 'author.username',
@@ -286,14 +309,32 @@ export class PostsService {
                 'attachments.publicId',
                 'attachments.description',
             ]);
+            queryBuilder.addSelect(['post.id', 'post.postTitle', 'post.content']);
+            queryBuilder.addSelect(['parentComment.id', 'parentComment.content']);
         }
 
         if (id) {
-            queryBuilder.andWhere('post.id = :id', { id });
+            queryBuilder.andWhere('comment.id = :id', { id });
         }
 
         if (authorId) {
-            queryBuilder.andWhere('post.authorId = :authorId', { authorId });
+            queryBuilder.andWhere('comment.authorId = :authorId', { authorId });
+        }
+
+        if (postId) {
+            queryBuilder.andWhere('comment.postId = :postId', { postId });
+        }
+
+        if (
+            parentCommentId === null ||
+            parentCommentId === undefined ||
+            parentCommentId === 'null'
+        ) {
+            queryBuilder.andWhere('comment.parentCommentId IS NULL');
+        } else {
+            queryBuilder.andWhere('comment.parentCommentId = :parentCommentId', {
+                parentCommentId,
+            });
         }
 
         if (search) {
@@ -303,41 +344,38 @@ export class PostsService {
                 .join(' & ');
             queryBuilder.andWhere(
                 `(
-                    setweight(to_tsvector('english', post.postTitle), 'A') || 
-                    setweight(to_tsvector('english', post.content), 'B') || 
-                    setweight(to_tsvector('english', coalesce(author.username, '')), 'C') ||
-                    setweight(to_tsvector('english', coalesce(author.email, '')), 'C') ||
-                    setweight(to_tsvector('english', coalesce(author.displayName, '')), 'C')
+                    setweight(to_tsvector('english', comment.content), 'A') || 
+                    setweight(to_tsvector('english', coalesce(author.username, '')), 'B') ||
+                    setweight(to_tsvector('english', coalesce(author.email, '')), 'B') ||
+                    setweight(to_tsvector('english', coalesce(author.displayName, '')), 'B')
                 ) @@ to_tsquery('english', :tsQueryTerm)`,
                 { tsQueryTerm },
             );
         }
 
         Object.keys(filters).forEach((key) => {
-            if (validFields.includes(key as keyof Post)) {
+            if (validFields.includes(key as keyof Comment)) {
                 const filterValue = filters[key];
                 const paramName = `param_${key}`;
-                queryBuilder.andWhere(`post.${key} = :${paramName}`, { [paramName]: filterValue });
+                queryBuilder.andWhere(`comment.${key} = :${paramName}`, {
+                    [paramName]: filterValue,
+                });
             }
         });
 
-        if (sortBy && validFields.includes(sortBy as keyof Post)) {
-            queryBuilder.orderBy(`post.${sortBy}`, sortOrder);
+        if (sortBy && validFields.includes(sortBy as keyof Comment)) {
+            queryBuilder.orderBy(`comment.${sortBy}`, sortOrder);
         } else {
-            queryBuilder.orderBy('post.createdAt', 'DESC');
+            queryBuilder.orderBy('comment.createdAt', 'DESC');
         }
 
         const offset = (page - 1) * limit;
         queryBuilder.skip(offset).take(limit);
 
-        const [posts, total] = await queryBuilder.getManyAndCount();
-
-        if (posts.length === 1) {
-            await this.postsRepository.increment({ id: posts[0].id }, 'viewsCount', 1);
-        }
+        const [comments, total] = await queryBuilder.getManyAndCount();
 
         return {
-            data: posts,
+            data: comments,
             total,
             page: page!,
             limit: limit!,
@@ -350,7 +388,7 @@ export class PostsService {
             await this.reactionsService.addOrUpdateReaction(
                 addReactionDto,
                 userId,
-                'post',
+                'comment',
                 transactionalEntityManager,
             );
         });
