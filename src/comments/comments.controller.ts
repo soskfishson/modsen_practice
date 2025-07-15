@@ -9,7 +9,6 @@ import {
     ParseUUIDPipe,
     Delete,
     HttpCode,
-    HttpStatus,
     Get,
     Query,
     ValidationPipe,
@@ -26,6 +25,7 @@ import { BaseAddReactionDto } from '../reactions/dto/base-add-reaction.dto';
 import { FindCommentsQueryDto } from './dto/find-comment-query.dto';
 import { PaginatedCommentResponseDto } from './dto/paginated-comment-response.dto';
 import { CommentResponseDto } from './dto/comment-response.dto';
+import { HttpStatusCodes } from '../common/constants/status-codes.enum';
 
 @ApiTags('comments')
 @Controller('comments')
@@ -93,7 +93,7 @@ export class CommentsController {
     @ApiResponse({ status: 401, description: 'Unauthorized.' })
     @ApiResponse({ status: 403, description: 'Forbidden.' })
     @ApiResponse({ status: 404, description: 'Comment not found.' })
-    @HttpCode(HttpStatus.NO_CONTENT)
+    @HttpCode(HttpStatusCodes.NO_CONTENT)
     async remove(
         @Param('id', ParseUUIDPipe) id: string,
         @UserId() currentUserId: string,

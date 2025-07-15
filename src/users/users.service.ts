@@ -8,6 +8,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { FindUsersQueryDto } from './dto/find-user-query.dto';
 import { Brackets } from 'typeorm';
 import { PaginatedUserResponseDto } from './dto/paginated-user-response.dto';
+import { USER_VALID_FIELDS, USER_PUBLIC_FIELDS } from './constants/user-constants';
+import { validatePassword } from './utils/user-utils';
 
 @Injectable()
 export class UsersService {
@@ -51,30 +53,16 @@ export class UsersService {
 
         const queryBuilder = this.usersRepository.createQueryBuilder('user');
 
-        const validFields: (keyof User)[] = [
-            'id',
-            'email',
-            'username',
-            'displayName',
-            'registrationDate',
-            'userDescription',
-            'isActive',
-            'createdAt',
-            'updatedAt',
-            'password',
-            'refreshToken',
-        ];
         if (fields) {
             const requestedFields = fields.split(',') as (keyof User)[];
-            const selectedFields = requestedFields.filter((field) => validFields.includes(field));
+            const selectedFields = requestedFields.filter((field) =>
+                USER_VALID_FIELDS.includes(field),
+            );
             if (selectedFields.length > 0) {
                 queryBuilder.select(selectedFields.map((field) => `user.${field}`));
             }
         } else {
-            const publicFields = validFields.filter(
-                (f) => f !== 'password' && f !== 'refreshToken',
-            );
-            queryBuilder.select(publicFields.map((field) => `user.${field}`));
+            queryBuilder.select(USER_PUBLIC_FIELDS.map((field) => `user.${field}`));
         }
 
         if (search) {
@@ -93,14 +81,14 @@ export class UsersService {
         }
 
         Object.keys(filters).forEach((key) => {
-            if (validFields.includes(key as keyof User)) {
+            if (USER_VALID_FIELDS.includes(key as keyof User)) {
                 const filterValue = filters[key];
                 const paramName = `param_${key}`;
                 queryBuilder.andWhere(`user.${key} = :${paramName}`, { [paramName]: filterValue });
             }
         });
 
-        if (sortBy && validFields.includes(sortBy as keyof User)) {
+        if (sortBy && USER_VALID_FIELDS.includes(sortBy as keyof User)) {
             queryBuilder.orderBy(`user.${sortBy}`, sortOrder);
         } else {
             queryBuilder.orderBy('user.createdAt', 'DESC');
@@ -150,6 +138,6 @@ export class UsersService {
     }
 
     async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
-        return bcrypt.compare(password, hashedPassword);
+        return validatePassword(password, hashedPassword);
     }
 }

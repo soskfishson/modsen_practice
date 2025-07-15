@@ -6,29 +6,29 @@ export class PaginatedCommentResponseDto {
         description: 'Array of comments for the current page.',
         type: [CommentResponseDto],
     })
-    data: CommentResponseDto[];
+    data!: CommentResponseDto[];
 
     @ApiProperty({
         description: 'Total number of comments matching the query.',
         example: 128,
     })
-    total: number;
+    total!: number;
 
     @ApiProperty({
         description: 'The current page number.',
         example: 1,
     })
-    page: number;
+    page!: number;
 
     @ApiProperty({
         description: 'The number of items per page.',
         example: 10,
     })
-    limit: number;
+    limit!: number;
 
     @ApiProperty({
         description: 'The total number of pages available.',
         example: 13,
     })
-    totalPages: number;
+    totalPages!: number;
 }

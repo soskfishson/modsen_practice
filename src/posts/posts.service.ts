@@ -16,6 +16,21 @@ import { AttachmentsService } from '../attachments/attachments.service';
 import { PostAttachment } from '../attachments/entities/post-attachment.entity';
 import { ReactionsService } from '../reactions/reactions.service';
 import { validatePostOwnership } from './utils/post-validation.util';
+import {
+    LIKES_COUNT,
+    DISLIKES_COUNT,
+    VIEWS_COUNT,
+    COMMENTS_COUNT,
+    AUTHOR,
+    ATTACHMENTS,
+    CONTENT,
+    POST_TITLE,
+    USERNAME,
+    EMAIL,
+    DISPLAY_NAME,
+    CREATED_AT,
+    UPDATED_AT,
+} from '../common/constants/entity-constants';
 
 interface CreatePostInput extends CreatePostDto {
     authorId: string;
@@ -135,7 +150,7 @@ export class PostsService {
 
                 return transactionalEntityManager.findOne(Post, {
                     where: { id: finalPost.id },
-                    relations: ['attachments', 'author'],
+                    relations: [ATTACHMENTS, AUTHOR],
                 });
             } catch (transactionError) {
                 if (
@@ -205,86 +220,63 @@ export class PostsService {
 
         const queryBuilder = this.postsRepository
             .createQueryBuilder('post')
-            .leftJoinAndSelect('post.author', 'author')
-            .leftJoinAndSelect('post.attachments', 'attachments');
+            .leftJoinAndSelect(`post.${AUTHOR}`, AUTHOR)
+            .leftJoinAndSelect(`post.${ATTACHMENTS}`, ATTACHMENTS);
 
         const validFields: (keyof Post)[] = [
             'id',
-            'postTitle',
-            'content',
+            POST_TITLE,
+            CONTENT,
             'authorId',
-            'viewsCount',
-            'likesCount',
-            'dislikesCount',
-            'commentsCount',
-            'createdAt',
-            'updatedAt',
+            VIEWS_COUNT,
+            LIKES_COUNT,
+            DISLIKES_COUNT,
+            COMMENTS_COUNT,
+            CREATED_AT,
+            UPDATED_AT,
         ];
+
+        let fieldsToSelect = validFields.map((field) => `post.${field}`);
+        let includeAuthor = false;
+        let includeAttachments = false;
 
         if (fields) {
             const requestedFields = fields.split(',') as (keyof Post)[];
             const selectedFields = requestedFields.filter((field) => validFields.includes(field));
+
             if (selectedFields.length > 0) {
-                queryBuilder.select(selectedFields.map((field) => `post.${field}`));
-                if (requestedFields.includes('author')) {
-                    queryBuilder.addSelect([
-                        'author.id',
-                        'author.username',
-                        'author.email',
-                        'author.displayName',
-                        'author.userDescription',
-                        'author.isActive',
-                        'author.registrationDate',
-                        'author.createdAt',
-                        'author.updatedAt',
-                    ]);
-                }
-                if (requestedFields.includes('attachments')) {
-                    queryBuilder.addSelect([
-                        'attachments.id',
-                        'attachments.url',
-                        'attachments.publicId',
-                        'attachments.description',
-                    ]);
-                }
-            } else {
-                queryBuilder.select(validFields.map((field) => `post.${field}`));
-                queryBuilder.addSelect([
-                    'author.id',
-                    'author.username',
-                    'author.email',
-                    'author.displayName',
-                    'author.userDescription',
-                    'author.isActive',
-                    'author.registrationDate',
-                    'author.createdAt',
-                    'author.updatedAt',
-                ]);
-                queryBuilder.addSelect([
-                    'attachments.id',
-                    'attachments.url',
-                    'attachments.publicId',
-                    'attachments.description',
-                ]);
+                fieldsToSelect = selectedFields.map((field) => `post.${field}`);
             }
+
+            includeAuthor = requestedFields.includes(AUTHOR);
+            includeAttachments = requestedFields.includes(ATTACHMENTS);
         } else {
-            queryBuilder.select(validFields.map((field) => `post.${field}`));
+            includeAuthor = true;
+            includeAttachments = true;
+        }
+
+        queryBuilder.select(fieldsToSelect);
+
+        if (includeAuthor) {
             queryBuilder.addSelect([
-                'author.id',
-                'author.username',
-                'author.email',
-                'author.displayName',
-                'author.userDescription',
-                'author.isActive',
-                'author.registrationDate',
-                'author.createdAt',
-                'author.updatedAt',
+                `${AUTHOR}.id`,
+                `${AUTHOR}.${USERNAME}`,
+                `${AUTHOR}.${EMAIL}`,
+                `${AUTHOR}.${DISPLAY_NAME}`,
+                `${AUTHOR}.userDescription`,
+                `${AUTHOR}.isActive`,
+                `${AUTHOR}.registrationDate`,
+                `${AUTHOR}.${CREATED_AT}`,
+                `${AUTHOR}.${UPDATED_AT}`,
             ]);
+        }
+
+        if (includeAttachments) {
             queryBuilder.addSelect([
-                'attachments.id',
-                'attachments.url',
-                'attachments.publicId',
-                'attachments.description',
+                `${ATTACHMENTS}.id`,
+                `${ATTACHMENTS}.url`,
+                `${ATTACHMENTS}.publicId`,
+                `${ATTACHMENTS}.description`,
             ]);
         }
 
@@ -293,7 +285,7 @@ export class PostsService {
         }
 
         if (authorId) {
-            queryBuilder.andWhere('post.authorId = :authorId', { authorId });
+            queryBuilder.andWhere(`post.authorId = :authorId`, { authorId });
         }
 
         if (search) {
@@ -303,11 +295,11 @@ export class PostsService {
                 .join(' & ');
             queryBuilder.andWhere(
                 `(
-                    setweight(to_tsvector('english', post.postTitle), 'A') || 
-                    setweight(to_tsvector('english', post.content), 'B') || 
-                    setweight(to_tsvector('english', coalesce(author.username, '')), 'C') ||
-                    setweight(to_tsvector('english', coalesce(author.email, '')), 'C') ||
-                    setweight(to_tsvector('english', coalesce(author.displayName, '')), 'C')
+                    setweight(to_tsvector('english', post.${POST_TITLE}), 'A') || 
+                    setweight(to_tsvector('english', post.${CONTENT}), 'B') || 
+                    setweight(to_tsvector('english', coalesce(${AUTHOR}.${USERNAME}, '')), 'C') ||
+                    setweight(to_tsvector('english', coalesce(${AUTHOR}.${EMAIL}, '')), 'C') ||
+                    setweight(to_tsvector('english', coalesce(${AUTHOR}.${DISPLAY_NAME}, '')), 'C')
                 ) @@ to_tsquery('english', :tsQueryTerm)`,
                 { tsQueryTerm },
             );
@@ -324,7 +316,7 @@ export class PostsService {
         if (sortBy && validFields.includes(sortBy as keyof Post)) {
             queryBuilder.orderBy(`post.${sortBy}`, sortOrder);
         } else {
-            queryBuilder.orderBy('post.createdAt', 'DESC');
+            queryBuilder.orderBy(`post.${CREATED_AT}`, 'DESC');
         }
 
         const offset = (page - 1) * limit;
@@ -332,8 +324,8 @@ export class PostsService {
 
         const [posts, total] = await queryBuilder.getManyAndCount();
 
-        if (posts.length === 1) {
-            await this.postsRepository.increment({ id: posts[0].id }, 'viewsCount', 1);
+        if (posts.length === 1 && id) {
+            await this.postsRepository.increment({ id: posts[0].id }, VIEWS_COUNT, 1);
         }
 
         return {

@@ -4,21 +4,21 @@ import { Comment } from '../../comments/entities/comment.entity';
 @Entity('comment_attachments')
 export class CommentAttachment {
     @PrimaryGeneratedColumn('uuid')
-    id: string;
+    id!: string;
 
     @Column()
-    url: string;
+    url!: string;
 
     @Column()
-    publicId: string;
+    publicId!: string;
 
     @Column({ nullable: true })
-    description: string;
+    description?: string;
 
     @Column({ name: 'comment_id' })
-    commentId: string;
+    commentId!: string;
 
     @ManyToOne(() => Comment, (comment) => comment.attachments, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'comment_id' })
-    comment: Comment;
+    comment!: Comment;
 }

@@ -4,38 +4,38 @@ import { UserResponseDto } from '../../users/dto/user-response.dto';
 
 export class PostResponseDto {
     @ApiProperty()
-    id: string;
+    id!: string;
 
     @ApiProperty()
-    postTitle: string;
+    postTitle!: string;
 
     @ApiProperty()
-    content: string;
+    content!: string;
 
     @ApiProperty()
-    authorId: string;
+    authorId!: string;
 
     @ApiProperty({ type: () => UserResponseDto })
-    author: UserResponseDto;
+    author!: UserResponseDto;
 
     @ApiProperty()
-    viewsCount: number;
+    viewsCount!: number;
 
     @ApiProperty()
-    likesCount: number;
+    likesCount!: number;
 
     @ApiProperty()
-    dislikesCount: number;
+    dislikesCount!: number;
 
     @ApiProperty()
-    commentsCount: number;
+    commentsCount!: number;
 
     @ApiProperty({ type: [PostAttachment] })
-    attachments: PostAttachment[];
+    attachments!: PostAttachment[];
 
     @ApiProperty()
-    createdAt: Date;
+    createdAt!: Date;
 
     @ApiProperty()
-    updatedAt: Date;
+    updatedAt!: Date;
 }

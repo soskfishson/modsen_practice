@@ -12,58 +12,68 @@ import { User } from '../../users/entities/user.entity';
 import { Post } from '../../posts/entities/post.entity';
 import { CommentReaction } from '../../reactions/entities/comment-reaction.entity';
 import { CommentAttachment } from '../../attachments/entities/comment-attachment.entity';
+import {
+    COMMENTS_TABLE,
+    AUTHOR,
+    POST_ID,
+    PARENT_COMMENT_ID,
+    LIKES_COUNT,
+    DISLIKES_COUNT,
+    CREATED_AT,
+    UPDATED_AT,
+} from '../../common/constants/entity-constants';
 
-@Entity('comments')
+@Entity(COMMENTS_TABLE)
 export class Comment {
     @PrimaryGeneratedColumn('uuid')
-    id: string;
+    id!: string;
 
     @Column({ type: 'text' })
-    content: string;
+    content!: string;
 
-    @Column({ name: 'author_id' })
-    authorId: string;
+    @Column({ name: `${AUTHOR}_id` })
+    authorId!: string;
 
     @ManyToOne(() => User, (user) => user.comments, { onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'author_id' })
-    author: User;
+    @JoinColumn({ name: `${AUTHOR}_id` })
+    author!: User;
 
-    @Column({ name: 'post_id', nullable: true })
-    postId: string;
+    @Column({ name: `${POST_ID}`, nullable: true })
+    postId!: string;
 
     @ManyToOne(() => Post, (post) => post.comments, { onDelete: 'CASCADE', nullable: true })
-    @JoinColumn({ name: 'post_id' })
-    post: Post;
+    @JoinColumn({ name: `${POST_ID}` })
+    post!: Post;
 
-    @Column({ name: 'parent_comment_id', nullable: true })
-    parentCommentId: string;
+    @Column({ name: `${PARENT_COMMENT_ID}`, nullable: true })
+    parentCommentId!: string;
 
     @ManyToOne(() => Comment, (comment) => comment.replies, { onDelete: 'CASCADE', nullable: true })
-    @JoinColumn({ name: 'parent_comment_id' })
-    parentComment: Comment;
+    @JoinColumn({ name: `${PARENT_COMMENT_ID}` })
+    parentComment!: Comment;
 
     @OneToMany(() => Comment, (comment) => comment.parentComment)
-    replies: Comment[];
+    replies!: Comment[];
 
-    @Column({ type: 'int', default: 0 })
-    likesCount: number;
+    @Column({ type: 'int', default: 0, name: LIKES_COUNT })
+    likesCount!: number;
 
-    @Column({ type: 'int', default: 0 })
-    dislikesCount: number;
+    @Column({ type: 'int', default: 0, name: DISLIKES_COUNT })
+    dislikesCount!: number;
 
-    @CreateDateColumn()
-    createdAt: Date;
+    @CreateDateColumn({ name: CREATED_AT })
+    createdAt!: Date;
 
-    @UpdateDateColumn()
-    updatedAt: Date;
+    @UpdateDateColumn({ name: UPDATED_AT })
+    updatedAt!: Date;
 
     @OneToMany(() => CommentReaction, (commentReaction) => commentReaction.comment, {
         cascade: true,
     })
-    reactions: CommentReaction[];
+    reactions!: CommentReaction[];
 
     @OneToMany(() => CommentAttachment, (attachment) => attachment.comment, {
         cascade: ['insert', 'update'],
     })
-    attachments: CommentAttachment[];
+    attachments!: CommentAttachment[];
 }

@@ -702,6 +702,7 @@ describe('PostsService', () => {
         it('should increment viewsCount when a single post is returned', async () => {
             const singlePost = [{ ...mockPosts[0], viewsCount: 0 }];
             const queryDto: FindPostsQueryDto = { id: singlePost[0].id };
+
             mockQueryBuilder.getManyAndCount.mockResolvedValue([singlePost, 1]);
 
             await service.find(queryDto);

@@ -14,7 +14,7 @@ export class CreateAttachmentDto {
         return value;
     })
     @IsString()
-    fileContent: string;
+    fileContent!: string;
 
     @ApiProperty({
         description: 'Optional description for the attachment (alt text)',

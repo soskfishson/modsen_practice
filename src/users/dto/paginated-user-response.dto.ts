@@ -6,29 +6,29 @@ export class PaginatedUserResponseDto {
         description: 'Array of users for the current page.',
         type: [UserResponseDto],
     })
-    data: UserResponseDto[];
+    data!: UserResponseDto[];
 
     @ApiProperty({
         description: 'Total number of users matching the query.',
         example: 128,
     })
-    total: number;
+    total!: number;
 
     @ApiProperty({
         description: 'The current page number.',
         example: 1,
     })
-    page: number;
+    page!: number;
 
     @ApiProperty({
         description: 'The number of items per page.',
         example: 10,
     })
-    limit: number;
+    limit!: number;
 
     @ApiProperty({
         description: 'The total number of pages available.',
         example: 13,
     })
-    totalPages: number;
+    totalPages!: number;
 }
