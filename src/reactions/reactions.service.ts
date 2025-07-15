@@ -7,6 +7,14 @@ import { BaseAddReactionDto } from './dto/base-add-reaction.dto';
 import { ReactionType } from './interfaces/reaction.interface';
 import { Post } from '../posts/entities/post.entity';
 import { Comment } from '../comments/entities/comment.entity';
+import {
+    LIKES_COUNT,
+    DISLIKES_COUNT,
+    POST_ID,
+    COMMENT_ID,
+    COMMENTS_TABLE,
+    POSTS_TABLE,
+} from '../common/constants/entity-constants';
 
 @Injectable()
 export class ReactionsService {
@@ -28,20 +36,23 @@ export class ReactionsService {
         let reactionRepository: Repository<PostReaction | CommentReaction>;
         let parentEntityName: string;
 
-        if (parentType === 'post') {
-            reactionRepository = this.postReactionRepository as Repository<PostReaction>;
-            existingReaction = await transactionalEntityManager.findOne(PostReaction, {
-                where: { userId, postId: addReactionDto.parentId },
-            });
-            parentEntity = Post;
-            parentEntityName = 'Post';
-        } else {
-            reactionRepository = this.commentReactionRepository as Repository<CommentReaction>;
-            existingReaction = await transactionalEntityManager.findOne(CommentReaction, {
-                where: { userId, commentId: addReactionDto.parentId },
-            });
-            parentEntity = Comment;
-            parentEntityName = 'Comment';
+        switch (parentType) {
+            case 'post':
+                reactionRepository = this.postReactionRepository as Repository<PostReaction>;
+                existingReaction = await transactionalEntityManager.findOne(PostReaction, {
+                    where: { userId, postId: addReactionDto.parentId },
+                });
+                parentEntity = Post;
+                parentEntityName = POSTS_TABLE;
+                break;
+            case 'comment':
+                reactionRepository = this.commentReactionRepository as Repository<CommentReaction>;
+                existingReaction = await transactionalEntityManager.findOne(CommentReaction, {
+                    where: { userId, commentId: addReactionDto.parentId },
+                });
+                parentEntity = Comment;
+                parentEntityName = COMMENTS_TABLE;
+                break;
         }
 
         const parent = await transactionalEntityManager.findOne(parentEntity, {
@@ -61,54 +72,63 @@ export class ReactionsService {
                 existingReaction.id,
             );
 
-            if (existingReaction.type === ReactionType.LIKE) {
-                await transactionalEntityManager.decrement(
-                    parentEntity,
-                    { id: addReactionDto.parentId },
-                    'likesCount',
-                    1,
-                );
-            } else if (existingReaction.type === ReactionType.DISLIKE) {
-                await transactionalEntityManager.decrement(
-                    parentEntity,
-                    { id: addReactionDto.parentId },
-                    'dislikesCount',
-                    1,
-                );
+            switch (existingReaction.type) {
+                case ReactionType.LIKE:
+                    await transactionalEntityManager.decrement(
+                        parentEntity,
+                        { id: addReactionDto.parentId },
+                        LIKES_COUNT,
+                        1,
+                    );
+                    break;
+                case ReactionType.DISLIKE:
+                    await transactionalEntityManager.decrement(
+                        parentEntity,
+                        { id: addReactionDto.parentId },
+                        DISLIKES_COUNT,
+                        1,
+                    );
+                    break;
             }
         }
 
         if (addReactionDto.type !== null) {
             let newReaction: PostReaction | CommentReaction;
-            if (parentType === 'post') {
-                newReaction = reactionRepository.create({
-                    type: addReactionDto.type,
-                    userId: userId,
-                    postId: addReactionDto.parentId,
-                });
-            } else {
-                newReaction = reactionRepository.create({
-                    type: addReactionDto.type,
-                    userId: userId,
-                    commentId: addReactionDto.parentId,
-                });
+            switch (parentType) {
+                case 'post':
+                    newReaction = reactionRepository.create({
+                        type: addReactionDto.type,
+                        userId: userId,
+                        postId: addReactionDto.parentId,
+                    });
+                    break;
+                case 'comment':
+                    newReaction = reactionRepository.create({
+                        type: addReactionDto.type,
+                        userId: userId,
+                        commentId: addReactionDto.parentId,
+                    });
+                    break;
             }
             await transactionalEntityManager.save(newReaction);
 
-            if (addReactionDto.type === ReactionType.LIKE) {
-                await transactionalEntityManager.increment(
-                    parentEntity,
-                    { id: addReactionDto.parentId },
-                    'likesCount',
-                    1,
-                );
-            } else if (addReactionDto.type === ReactionType.DISLIKE) {
-                await transactionalEntityManager.increment(
-                    parentEntity,
-                    { id: addReactionDto.parentId },
-                    'dislikesCount',
-                    1,
-                );
+            switch (addReactionDto.type) {
+                case ReactionType.LIKE:
+                    await transactionalEntityManager.increment(
+                        parentEntity,
+                        { id: addReactionDto.parentId },
+                        LIKES_COUNT,
+                        1,
+                    );
+                    break;
+                case ReactionType.DISLIKE:
+                    await transactionalEntityManager.increment(
+                        parentEntity,
+                        { id: addReactionDto.parentId },
+                        DISLIKES_COUNT,
+                        1,
+                    );
+                    break;
             }
         }
     }
@@ -119,9 +139,9 @@ export class ReactionsService {
         transactionalEntityManager: EntityManager,
     ): Promise<void> {
         if (parentType === 'post') {
-            await transactionalEntityManager.delete(PostReaction, { postId: parentId });
+            await transactionalEntityManager.delete(PostReaction, { [POST_ID]: parentId });
         } else {
-            await transactionalEntityManager.delete(CommentReaction, { commentId: parentId });
+            await transactionalEntityManager.delete(CommentReaction, { [COMMENT_ID]: parentId });
         }
     }
 }

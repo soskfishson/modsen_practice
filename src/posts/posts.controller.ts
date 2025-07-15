@@ -10,7 +10,6 @@ import {
     ParseUUIDPipe,
     Delete,
     HttpCode,
-    HttpStatus,
     Get,
     Query,
     ValidationPipe,
@@ -25,6 +24,7 @@ import { FindPostsQueryDto } from './dto/find-post-query.dto';
 import { PaginatedPostResponseDto } from './dto/paginated-post-response.dto';
 import { BaseAddReactionDto } from '../reactions/dto/base-add-reaction.dto';
 import { UserId } from '../common/decorators/user-id.decorator';
+import { HttpStatusCodes } from '../common/constants/status-codes.enum';
 
 @ApiTags('posts')
 @Controller('posts')
@@ -79,7 +79,7 @@ export class PostsController {
     @ApiResponse({ status: 401, description: 'Unauthorized.' })
     @ApiResponse({ status: 403, description: 'Forbidden.' })
     @ApiResponse({ status: 404, description: 'Post not found.' })
-    @HttpCode(HttpStatus.NO_CONTENT)
+    @HttpCode(HttpStatusCodes.NO_CONTENT)
     async remove(
         @Param('id', ParseUUIDPipe) id: string,
         @UserId() currentUserId: string,

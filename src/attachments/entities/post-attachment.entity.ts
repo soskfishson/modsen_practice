@@ -4,21 +4,21 @@ import { Post } from '../../posts/entities/post.entity';
 @Entity('post_attachments')
 export class PostAttachment {
     @PrimaryGeneratedColumn('uuid')
-    id: string;
+    id!: string;
 
     @Column()
-    url: string;
+    url!: string;
 
     @Column()
-    publicId: string;
+    publicId!: string;
 
     @Column({ nullable: true })
-    description: string;
+    description?: string;
 
     @Column({ name: 'post_id' })
-    postId: string;
+    postId!: string;
 
     @ManyToOne(() => Post, (post) => post.attachments, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'post_id' })
-    post: Post;
+    post!: Post;
 }

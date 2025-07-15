@@ -106,15 +106,19 @@ describe('AuthController', () => {
         it('should refresh access token', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
             const refreshToken = 'some_refresh_token';
+
             const mockAuthResponse: RefreshResponseDto = {
                 access_token: 'new_access_token',
+                refresh_token: 'new_refresh_token',
             };
-
             jest.spyOn(authService, 'refreshAccessToken').mockResolvedValue(mockAuthResponse);
 
-            const req = { user: mockUser, body: { refreshToken } };
-            const result = await controller.refresh(req);
-            expect(authService.refreshAccessToken).toHaveBeenCalledWith(mockUser, refreshToken);
+            const result = await controller.refresh(mockUser, refreshToken);
+
+            expect(authService.refreshAccessToken).toHaveBeenCalledWith(
+                { sub: mockUser.id, email: mockUser.email },
+                refreshToken,
+            );
             expect(result).toEqual(mockAuthResponse);
         });
     });

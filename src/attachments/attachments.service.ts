@@ -74,9 +74,9 @@ export class AttachmentsService {
                     parentType === 'post' ? PostAttachment : CommentAttachment,
                     attachment.id,
                 );
-            } catch (error) {
+            } catch (error: unknown) {
                 throw new InternalServerErrorException(
-                    `Failed to delete attachment from Cloudinary or database: ${attachment.publicId}. ${error.message}`,
+                    `Failed to delete attachment from Cloudinary or database: ${attachment.publicId}. ${error instanceof Error ? error.message : 'Unknown error'}`,
                 );
             }
             return null;
@@ -111,9 +111,9 @@ export class AttachmentsService {
                     parentType === 'post' ? PostAttachment : CommentAttachment,
                     attachment.id,
                 );
-            } catch (error) {
+            } catch (error: unknown) {
                 throw new InternalServerErrorException(
-                    `Failed to delete attachment from Cloudinary or database: ${attachment.publicId}. ${error.message}`,
+                    `Failed to delete attachment from Cloudinary or database: ${attachment.publicId}. ${error instanceof Error ? error.message : 'Unknown error'}`,
                 );
             }
         }
