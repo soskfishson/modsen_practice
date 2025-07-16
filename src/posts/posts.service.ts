@@ -306,10 +306,25 @@ export class PostsService {
         }
 
         Object.keys(filters).forEach((key) => {
-            if (validFields.includes(key as keyof Post)) {
+            const operatorMap = {
+                gte: '>=', // greater than or equal
+                lte: '<=', // less than or equal
+                gt: '>', // greater than
+                lt: '<', // less than
+                ne: '!=', // not equal
+            };
+            const parts = key.split('_');
+            const fieldName = parts[0];
+            const operatorSuffix = parts[1] as keyof typeof operatorMap;
+
+            if (validFields.includes(fieldName as keyof Post)) {
+                const operator = operatorMap[operatorSuffix] || '=';
                 const filterValue = filters[key];
-                const paramName = `param_${key}`;
-                queryBuilder.andWhere(`post.${key} = :${paramName}`, { [paramName]: filterValue });
+                const paramName = `param_${key.replace('.', '_')}`;
+
+                queryBuilder.andWhere(`post.${fieldName} ${operator} :${paramName}`, {
+                    [paramName]: filterValue,
+                });
             }
         });
 
