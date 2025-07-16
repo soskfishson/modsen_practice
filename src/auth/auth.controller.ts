@@ -9,6 +9,8 @@ import {
     HttpCode,
     ClassSerializerInterceptor,
     UnauthorizedException,
+    ValidationPipe,
+    UsePipes,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -26,6 +28,7 @@ import { JwtPayload } from './strageties/jwt.strategy';
 @ApiTags('auth')
 @Controller('auth')
 @UseInterceptors(ClassSerializerInterceptor)
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class AuthController {
     private readonly logger = new Logger(AuthController.name);
 

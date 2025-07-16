@@ -12,6 +12,7 @@ import {
     Get,
     Query,
     ValidationPipe,
+    UsePipes,
     Patch,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -30,6 +31,7 @@ import { HttpStatusCodes } from '../common/constants/status-codes.enum';
 @ApiTags('comments')
 @Controller('comments')
 @UseInterceptors(ClassSerializerInterceptor)
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class CommentsController {
     constructor(private readonly commentsService: CommentsService) {}
 
