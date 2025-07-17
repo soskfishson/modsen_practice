@@ -43,6 +43,9 @@ export class User {
     @Exclude()
     refreshToken!: string;
 
+    @Column({ type: 'text', nullable: true })
+    profilePictureUrl!: string | null;
+
     @CreateDateColumn()
     createdAt!: Date;
 

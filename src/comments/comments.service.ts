@@ -262,6 +262,7 @@ export class CommentsService {
             'author.registrationDate',
             `author.${CREATED_AT}`,
             `author.${UPDATED_AT}`,
+            'author.profilePictureUrl',
         ];
 
         const attachmentFields = [
