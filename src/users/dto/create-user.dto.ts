@@ -1,5 +1,6 @@
 import { IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class CreateUserDto {
     @ApiPropertyOptional({
@@ -38,4 +39,18 @@ export class CreateUserDto {
     @MinLength(1)
     @MaxLength(255)
     userDescription!: string;
+
+    @ApiPropertyOptional({
+        description: 'File content encoded in Base64. Optional.',
+        example: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...',
+    })
+    @IsOptional()
+    @IsString()
+    @Transform(({ value }) => {
+        if (typeof value === 'string' && value.startsWith('data:') && value.includes(';base64,')) {
+            return value.split(',')[1];
+        }
+        return value;
+    })
+    profilePicture?: string;
 }

@@ -12,6 +12,7 @@ export const USER_VALID_FIELDS: (keyof User)[] = [
     'updatedAt',
     'password',
     'refreshToken',
+    'profilePictureUrl',
 ];
 
 export const USER_PUBLIC_FIELDS: (keyof User)[] = [

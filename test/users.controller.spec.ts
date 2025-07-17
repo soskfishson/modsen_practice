@@ -48,6 +48,7 @@ describe('UsersController', () => {
                         userDescription: 'Desc1',
                         isActive: true,
                         registrationDate: new Date(),
+                        profilePictureUrl: null,
                         createdAt: new Date(),
                         updatedAt: new Date(),
                     },

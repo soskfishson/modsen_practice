@@ -50,6 +50,7 @@ describe('AuthController', () => {
                 password: 'password123',
                 displayName: 'Test User',
                 userDescription: 'A test user',
+                profilePicture: undefined,
             };
             const _mockUserResponseDto: UserResponseDto = {
                 id: '1',
@@ -59,6 +60,7 @@ describe('AuthController', () => {
                 userDescription: 'A test user',
                 isActive: true,
                 registrationDate: new Date(),
+                profilePictureUrl: null,
                 createdAt: new Date(),
                 updatedAt: new Date(),
             };

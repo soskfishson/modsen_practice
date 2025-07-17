@@ -21,6 +21,8 @@ async function bootstrap() {
 
     app.use('/posts', json({ limit: '10mb' }));
     app.use('/comments', json({ limit: '10mb' }));
+    app.use('/auth', json({ limit: '2mb' }));
+    app.use('/users', json({ limit: '5mb' }));
     app.use(json({ limit: '100kb' }));
 
     const document = SwaggerModule.createDocument(app, swaggerConfig);

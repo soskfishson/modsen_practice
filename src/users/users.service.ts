@@ -10,12 +10,14 @@ import { Brackets } from 'typeorm';
 import { PaginatedUserResponseDto } from './dto/paginated-user-response.dto';
 import { USER_VALID_FIELDS, USER_PUBLIC_FIELDS } from './constants/user-constants';
 import { validatePassword } from './utils/user-utils';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class UsersService {
     constructor(
         @InjectRepository(User)
         private usersRepository: Repository<User>,
+        private cloudinaryService: CloudinaryService,
     ) {}
 
     async create(createUserDto: CreateUserDto): Promise<User> {
@@ -30,10 +32,19 @@ export class UsersService {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(createUserDto.password, saltRounds);
 
+        let profilePictureUrl: string | null = null;
+
+        if (createUserDto.profilePicture) {
+            const buffer = Buffer.from(createUserDto.profilePicture, 'base64');
+            const uploadResult = await this.cloudinaryService.uploadImage(buffer);
+            profilePictureUrl = uploadResult.secure_url;
+        }
+
         const user = this.usersRepository.create({
             ...createUserDto,
             password: hashedPassword,
             registrationDate: new Date(),
+            profilePictureUrl: profilePictureUrl,
         });
 
         return this.usersRepository.save(user);
@@ -125,6 +136,22 @@ export class UsersService {
             }
         }
 
+        if (updateUserDto.profilePicture) {
+            if (user.profilePictureUrl) {
+                try {
+                    await this.cloudinaryService.deleteImageByUrl(user.profilePictureUrl);
+                } catch (error) {
+                    console.error('Failed to delete old profile picture:', error);
+                }
+            }
+
+            const buffer = Buffer.from(updateUserDto.profilePicture, 'base64');
+            const uploadResult = await this.cloudinaryService.uploadImage(buffer);
+            user.profilePictureUrl = uploadResult.secure_url;
+
+            delete updateUserDto.profilePicture;
+        }
+
         Object.assign(user, updateUserDto);
         return this.usersRepository.save(user);
     }
@@ -134,7 +161,17 @@ export class UsersService {
         if (data.length === 0) {
             throw new NotFoundException(`User with ID ${id} not found`);
         }
-        await this.usersRepository.remove(data[0] as User);
+        const user = data[0] as User;
+
+        if (user.profilePictureUrl) {
+            try {
+                await this.cloudinaryService.deleteImageByUrl(user.profilePictureUrl);
+            } catch (error) {
+                console.error(`Failed to delete PFP for user ${id} during removal:`, error);
+            }
+        }
+
+        await this.usersRepository.remove(user);
     }
 
     async validatePassword(password: string, hashedPassword: string): Promise<boolean> {

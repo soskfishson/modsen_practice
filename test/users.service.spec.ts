@@ -8,10 +8,12 @@ import { CreateUserDto } from '../src/users/dto/create-user.dto';
 import { UpdateUserDto } from '../src/users/dto/update-user.dto';
 import { FindUsersQueryDto } from '../src/users/dto/find-user-query.dto';
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { CloudinaryService } from '../src/cloudinary/cloudinary.service';
 
 describe('UsersService', () => {
     let service: UsersService;
     let usersRepository: Repository<User>;
+    let cloudinaryService: CloudinaryService;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -21,11 +23,19 @@ describe('UsersService', () => {
                     provide: getRepositoryToken(User),
                     useClass: Repository,
                 },
+                {
+                    provide: CloudinaryService,
+                    useValue: {
+                        uploadImage: jest.fn(),
+                        deleteImageByUrl: jest.fn(),
+                    },
+                },
             ],
         }).compile();
 
         service = module.get<UsersService>(UsersService);
         usersRepository = module.get<Repository<User>>(getRepositoryToken(User));
+        cloudinaryService = module.get<CloudinaryService>(CloudinaryService);
     });
 
     it('should be defined', () => {
@@ -40,10 +50,12 @@ describe('UsersService', () => {
                 password: 'password123',
                 displayName: 'Test User',
                 userDescription: 'A test user',
+                profilePicture: 'base64encodedstring',
             };
-
+            const mockUploadResult = { secure_url: 'http://mock-url.com/image.jpg' };
             jest.spyOn(usersRepository, 'findOne').mockResolvedValue(null);
             jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashedPassword' as never);
+            jest.spyOn(cloudinaryService, 'uploadImage').mockResolvedValue(mockUploadResult);
             jest.spyOn(usersRepository, 'create').mockReturnValue({
                 ...createUserDto,
                 password: 'hashedPassword',
@@ -57,15 +69,16 @@ describe('UsersService', () => {
             } as User);
 
             const result = await service.create(createUserDto);
+            expect(cloudinaryService.uploadImage).toHaveBeenCalled();
             expect(usersRepository.findOne).toHaveBeenCalledWith({
                 where: [{ email: createUserDto.email }, { username: createUserDto.username }],
             });
             expect(bcrypt.hash).toHaveBeenCalledWith(createUserDto.password, 10);
             expect(usersRepository.create).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    email: createUserDto.email,
-                    username: createUserDto.username,
+                    ...createUserDto,
                     password: 'hashedPassword',
+                    profilePictureUrl: mockUploadResult.secure_url,
                 }),
             );
             expect(usersRepository.save).toHaveBeenCalled();

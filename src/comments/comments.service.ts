@@ -235,7 +235,6 @@ export class CommentsService {
 
         const queryBuilder = this.commentsRepository.createQueryBuilder('comment');
 
-        // Always use leftJoinAndSelect for relations that should be hydrated as objects/arrays
         queryBuilder.leftJoinAndSelect('comment.author', 'author');
         queryBuilder.leftJoinAndSelect('comment.attachments', 'attachments');
         queryBuilder.leftJoinAndSelect('comment.post', 'post');
@@ -253,7 +252,6 @@ export class CommentsService {
             PARENT_COMMENT_ID,
         ];
 
-        // Define all fields for related entities for explicit selection
         const authorFields = [
             `author.id`,
             `author.${USERNAME}`,
@@ -264,6 +262,7 @@ export class CommentsService {
             'author.registrationDate',
             `author.${CREATED_AT}`,
             `author.${UPDATED_AT}`,
+            'author.profilePictureUrl',
         ];
 
         const attachmentFields = [
@@ -282,14 +281,12 @@ export class CommentsService {
         if (fields) {
             const requestedFieldsArray = fields.split(',');
 
-            // Select scalar fields of Comment
             requestedFieldsArray.forEach((field) => {
                 if (validScalarFields.includes(field as keyof Comment)) {
                     fieldsToSelect.push(`comment.${field}`);
                 }
             });
 
-            // Explicitly select all fields for relations if they are requested by alias
             if (requestedFieldsArray.includes(AUTHOR)) {
                 fieldsToSelect = fieldsToSelect.concat(authorFields);
             }
@@ -303,14 +300,12 @@ export class CommentsService {
                 fieldsToSelect = fieldsToSelect.concat(parentCommentFields);
             }
 
-            // If no scalar fields of the main entity were explicitly requested, ensure they are still selected
             if (fieldsToSelect.filter((f) => f.startsWith('comment.')).length === 0) {
                 fieldsToSelect = fieldsToSelect.concat(
                     validScalarFields.map((field) => `comment.${field}`),
                 );
             }
         } else {
-            // If no fields parameter, select all valid scalar fields and all relation fields by default
             fieldsToSelect = [
                 ...validScalarFields.map((field) => `comment.${field}`),
                 ...authorFields,
@@ -320,7 +315,6 @@ export class CommentsService {
             ];
         }
 
-        // Apply select for all determined fields. This is crucial as it overrides default selections.
         if (fieldsToSelect.length > 0) {
             queryBuilder.select(fieldsToSelect);
         }
