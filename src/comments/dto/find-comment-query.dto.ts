@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min, IsIn, IsUUID } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+import { IsInt, IsOptional, IsString, Max, Min, IsIn, IsUUID, ValidateIf } from 'class-validator';
 
 export class FindCommentsQueryDto {
     @ApiPropertyOptional({
@@ -89,8 +89,10 @@ export class FindCommentsQueryDto {
         example: 'some-comment-uuid',
     })
     @IsOptional()
+    @Transform(({ value }) => (value === 'null' ? null : value))
+    @ValidateIf((obj, value) => value !== null && value !== undefined)
     @IsUUID()
-    parentCommentId?: string;
+    parentCommentId?: string | null;
 
     [key: string]: any;
 }

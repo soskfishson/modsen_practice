@@ -12,6 +12,7 @@ import {
     ForbiddenException,
     Query,
     ValidationPipe,
+    UsePipes,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
@@ -25,6 +26,7 @@ import { UserId } from '../common/decorators/user-id.decorator';
 @ApiTags('users')
 @Controller('users')
 @UseInterceptors(ClassSerializerInterceptor)
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class UsersController {
     constructor(private readonly usersService: UsersService) {}
 

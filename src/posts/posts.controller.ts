@@ -10,7 +10,6 @@ import {
     ParseUUIDPipe,
     Delete,
     HttpCode,
-    HttpStatus,
     Get,
     Query,
     ValidationPipe,
@@ -25,6 +24,7 @@ import { FindPostsQueryDto } from './dto/find-post-query.dto';
 import { PaginatedPostResponseDto } from './dto/paginated-post-response.dto';
 import { BaseAddReactionDto } from '../reactions/dto/base-add-reaction.dto';
 import { UserId } from '../common/decorators/user-id.decorator';
+import { HttpStatusCodes } from '../common/constants/status-codes.enum';
 
 @ApiTags('posts')
 @Controller('posts')
@@ -51,7 +51,7 @@ export class PostsController {
         description: 'Posts retrieved successfully.',
         type: PaginatedPostResponseDto,
     })
-    async find(@Query(new ValidationPipe({ transform: true })) query: FindPostsQueryDto) {
+    async find(@Query() query: FindPostsQueryDto) {
         return this.postsService.find(query);
     }
 
@@ -65,7 +65,8 @@ export class PostsController {
     @ApiResponse({ status: 404, description: 'Post not found.' })
     async update(
         @Param('id', ParseUUIDPipe) id: string,
-        @Body() updatePostDto: UpdatePostDto,
+        @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+        updatePostDto: UpdatePostDto,
         @UserId() currentUserId: string,
     ) {
         return this.postsService.update(id, updatePostDto, currentUserId);
@@ -79,7 +80,7 @@ export class PostsController {
     @ApiResponse({ status: 401, description: 'Unauthorized.' })
     @ApiResponse({ status: 403, description: 'Forbidden.' })
     @ApiResponse({ status: 404, description: 'Post not found.' })
-    @HttpCode(HttpStatus.NO_CONTENT)
+    @HttpCode(HttpStatusCodes.NO_CONTENT)
     async remove(
         @Param('id', ParseUUIDPipe) id: string,
         @UserId() currentUserId: string,
@@ -95,7 +96,8 @@ export class PostsController {
     @ApiResponse({ status: 401, description: 'Unauthorized.' })
     @ApiResponse({ status: 404, description: 'Post not found.' })
     async reaction(
-        @Body() addReactionDto: BaseAddReactionDto,
+        @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+        addReactionDto: BaseAddReactionDto,
         @UserId() currentUserId: string,
     ): Promise<void> {
         await this.postsService.reaction(currentUserId, addReactionDto);

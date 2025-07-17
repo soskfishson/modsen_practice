@@ -1,12 +1,16 @@
 import {
+    Logger,
     Controller,
     Post,
     Body,
     UseGuards,
-    Request,
+    Request as ExpressRequest,
     UseInterceptors,
     HttpCode,
     ClassSerializerInterceptor,
+    UnauthorizedException,
+    ValidationPipe,
+    UsePipes,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -19,11 +23,15 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { RefreshJwtAuthGuard } from './guards/refresh-jwt-auth.guard';
 import { RefreshResponseDto } from './dto/refresh-response.dto';
+import { JwtPayload } from './strageties/jwt.strategy';
 
 @ApiTags('auth')
 @Controller('auth')
 @UseInterceptors(ClassSerializerInterceptor)
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class AuthController {
+    private readonly logger = new Logger(AuthController.name);
+
     constructor(private readonly authService: AuthService) {}
 
     @Post('register')
@@ -44,7 +52,7 @@ export class AuthController {
     @ApiBody({ type: LoginDto })
     @ApiResponse({ status: 200, description: 'User logged in successfully', type: AuthResponseDto })
     @ApiResponse({ status: 401, description: 'Invalid credentials' })
-    async login(@Request() req) {
+    async login(@ExpressRequest() req: { user: User }) {
         return this.authService.login(req.user);
     }
 
@@ -66,9 +74,18 @@ export class AuthController {
         type: RefreshResponseDto,
     })
     @ApiResponse({ status: 401, description: 'Invalid refresh token' })
-    async refresh(@Request() req) {
-        const user = req.user;
-        const refreshToken = req.body.refreshToken;
-        return this.authService.refreshAccessToken(user, refreshToken);
+    async refresh(
+        @CurrentUser() user: User | undefined,
+        @Body('refreshToken') refreshToken: string,
+    ) {
+        if (!user) {
+            this.logger.error(
+                'Refresh token guard passed, but user object is undefined. This should not happen.',
+            );
+            throw new UnauthorizedException('Invalid refresh token or user information missing.');
+        }
+
+        const payload: JwtPayload = { sub: user.id, email: user.email };
+        return this.authService.refreshAccessToken(payload, refreshToken);
     }
 }

@@ -6,12 +6,12 @@ import { CreateAttachmentDto as BaseCreateAttachmentDto } from '../../attachment
 export class CreatePostDto {
     @ApiProperty({ example: 'My title' })
     @IsString()
-    postTitle: string;
+    postTitle!: string;
 
     @ApiProperty({ example: 'My post content' })
     @IsOptional()
     @IsString()
-    content: string;
+    content!: string;
 
     @ApiProperty({
         type: () => [BaseCreateAttachmentDto],

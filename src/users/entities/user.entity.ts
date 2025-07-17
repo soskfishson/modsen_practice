@@ -15,49 +15,49 @@ import { CommentReaction } from '../../reactions/entities/comment-reaction.entit
 @Entity('users')
 export class User {
     @PrimaryGeneratedColumn('uuid')
-    id: string;
+    id!: string;
 
     @Column({ unique: true })
-    email: string;
+    email!: string;
 
     @Column({ unique: true })
-    username: string;
+    username!: string;
 
     @Column()
     @Exclude()
-    password: string;
+    password!: string;
 
     @Column({ nullable: true })
-    displayName: string;
+    displayName!: string;
 
     @Column({ type: 'text', nullable: true })
-    userDescription: string;
+    userDescription!: string;
 
     @Column({ default: false })
-    isActive: boolean;
+    isActive!: boolean;
 
     @Column()
-    registrationDate: Date;
+    registrationDate!: Date;
 
     @Column({ nullable: true })
     @Exclude()
-    refreshToken: string;
+    refreshToken!: string;
 
     @CreateDateColumn()
-    createdAt: Date;
+    createdAt!: Date;
 
     @UpdateDateColumn()
-    updatedAt: Date;
+    updatedAt!: Date;
 
     @OneToMany(() => Post, (post) => post.author)
-    posts: Post[];
+    posts!: Post[];
 
     @OneToMany(() => Comment, (comment) => comment.author)
-    comments: Comment[];
+    comments!: Comment[];
 
     @OneToMany(() => PostReaction, (reaction) => reaction.user)
-    postReactions: PostReaction[];
+    postReactions!: PostReaction[];
 
     @OneToMany(() => CommentReaction, (reaction) => reaction.user)
-    commentReactions: CommentReaction[];
+    commentReactions!: CommentReaction[];
 }

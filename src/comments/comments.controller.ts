@@ -9,10 +9,10 @@ import {
     ParseUUIDPipe,
     Delete,
     HttpCode,
-    HttpStatus,
     Get,
     Query,
     ValidationPipe,
+    UsePipes,
     Patch,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -26,10 +26,12 @@ import { BaseAddReactionDto } from '../reactions/dto/base-add-reaction.dto';
 import { FindCommentsQueryDto } from './dto/find-comment-query.dto';
 import { PaginatedCommentResponseDto } from './dto/paginated-comment-response.dto';
 import { CommentResponseDto } from './dto/comment-response.dto';
+import { HttpStatusCodes } from '../common/constants/status-codes.enum';
 
 @ApiTags('comments')
 @Controller('comments')
 @UseInterceptors(ClassSerializerInterceptor)
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class CommentsController {
     constructor(private readonly commentsService: CommentsService) {}
 
@@ -93,7 +95,7 @@ export class CommentsController {
     @ApiResponse({ status: 401, description: 'Unauthorized.' })
     @ApiResponse({ status: 403, description: 'Forbidden.' })
     @ApiResponse({ status: 404, description: 'Comment not found.' })
-    @HttpCode(HttpStatus.NO_CONTENT)
+    @HttpCode(HttpStatusCodes.NO_CONTENT)
     async remove(
         @Param('id', ParseUUIDPipe) id: string,
         @UserId() currentUserId: string,

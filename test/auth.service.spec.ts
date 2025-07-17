@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { UnauthorizedException } from '@nestjs/common';
 import { User } from '../src/users/entities/user.entity';
 import { RegisterDto } from '../src/auth/dto/register.dto';
+import { TokenExpiredError } from 'jsonwebtoken';
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -63,6 +64,7 @@ describe('AuthService', () => {
                     useValue: {
                         sign: jest.fn(),
                         decode: jest.fn(),
+                        verifyAsync: jest.fn(),
                     },
                 },
                 {
@@ -246,45 +248,59 @@ describe('AuthService', () => {
                 limit: 1,
                 totalPages: 1,
             });
-            jest.spyOn(jwtService, 'sign').mockReturnValueOnce('newAccessToken');
+            jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: '1' });
+
             jest.spyOn(jwtService, 'decode').mockReturnValueOnce({
                 sub: mockUser.id,
                 email: mockUser.email,
                 exp: Math.floor(Date.now() / 1000) + 3600,
             });
 
+            jest.spyOn(jwtService, 'sign')
+                .mockReturnValueOnce('newAccessToken')
+                .mockReturnValueOnce('newRefreshToken');
+
             const result = await service.refreshAccessToken(mockJwtPayload, 'validRefreshToken');
+
             expect(usersService.find).toHaveBeenCalledWith({
                 id: mockUser.id,
                 limit: 1,
                 fields: 'id,refreshToken',
             });
-            expect(jwtService.sign).toHaveBeenCalledWith(
-                { sub: mockUser.id, email: mockUser.email },
-                {
-                    secret: 'test_jwt_secret',
-                    expiresIn: '1h',
-                },
-            );
+            expect(jwtService.verifyAsync).toHaveBeenCalled();
+            expect(jwtService.sign).toHaveBeenCalledTimes(2);
+
             expect(result).toEqual({
                 access_token: 'newAccessToken',
+                refresh_token: 'newRefreshToken',
             });
         });
 
-        it('should throw UnauthorizedException if user not found', async () => {
+        it('should throw UnauthorizedException and invalidate token if refresh token has expired', async () => {
             const mockUser = { id: '1', email: 'test@example.com' } as User;
+            const mockDbUser = { ...mockUser, refreshToken: 'expiredRefreshToken' } as User;
             const mockJwtPayload = { sub: mockUser.id, email: mockUser.email };
+
             jest.spyOn(usersService, 'find').mockResolvedValueOnce({
-                data: [],
-                total: 0,
+                data: [mockDbUser],
+                total: 1,
                 page: 1,
                 limit: 1,
-                totalPages: 0,
+                totalPages: 1,
             });
 
-            await expect(service.refreshAccessToken(mockJwtPayload, 'someToken')).rejects.toThrow(
-                UnauthorizedException,
+            jest.spyOn(jwtService, 'verifyAsync').mockRejectedValue(
+                new TokenExpiredError('jwt expired', new Date()),
             );
+
+            await expect(
+                service.refreshAccessToken(mockJwtPayload, 'expiredRefreshToken'),
+            ).rejects.toThrow(new UnauthorizedException('Refresh token has expired'));
+
+            expect(usersService.update).toHaveBeenCalledWith(mockUser.id, {
+                refreshToken: null,
+                isActive: false,
+            });
         });
 
         it('should throw UnauthorizedException if refresh token is invalid', async () => {

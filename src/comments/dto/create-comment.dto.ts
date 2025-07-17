@@ -7,7 +7,7 @@ export class CreateCommentDto {
     @ApiProperty({ example: 'My post content' })
     @IsOptional()
     @IsString()
-    content: string;
+    content!: string;
 
     @ApiProperty({
         type: () => [BaseCreateAttachmentDto],
@@ -22,7 +22,7 @@ export class CreateCommentDto {
 
     @IsString()
     @ApiProperty({ description: 'Post this comment refers to', example: 'abc1234411...' })
-    postId: string;
+    postId!: string;
 
     @IsString()
     @IsOptional()

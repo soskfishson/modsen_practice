@@ -4,9 +4,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { getDatabaseConfig } from './config/database.config';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
-import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { PostsModule } from './posts/posts.module';
 import { CommentsModule } from './comments/comments.module';
+import { ReactionsModule } from './reactions/reactions.module';
+import { AttachmentsModule } from './attachments/attachments.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 @Module({
     imports: [
@@ -20,10 +22,14 @@ import { CommentsModule } from './comments/comments.module';
             inject: [ConfigService],
         }),
         UsersModule,
+        AuthModule,
         PostsModule,
         CommentsModule,
-        AuthModule,
+        ReactionsModule,
+        AttachmentsModule,
         CloudinaryModule,
     ],
+    controllers: [],
+    providers: [],
 })
 export class AppModule {}

@@ -4,16 +4,16 @@ import { UserResponseDto } from '../../users/dto/user-response.dto';
 
 export class CommentResponseDto {
     @ApiProperty()
-    id: string;
+    id!: string;
 
     @ApiProperty()
-    content: string;
+    content!: string;
 
     @ApiProperty()
-    authorId: string;
+    authorId!: string;
 
     @ApiProperty({ type: () => UserResponseDto })
-    author: UserResponseDto;
+    author!: UserResponseDto;
 
     @ApiProperty({ nullable: true })
     postId?: string;
@@ -22,19 +22,19 @@ export class CommentResponseDto {
     parentCommentId?: string;
 
     @ApiProperty()
-    likesCount: number;
+    likesCount!: number;
 
     @ApiProperty()
-    dislikesCount: number;
+    dislikesCount!: number;
 
     @ApiProperty({ type: [CommentAttachment] })
-    attachments: CommentAttachment[];
+    attachments!: CommentAttachment[];
 
     @ApiProperty()
-    createdAt: Date;
+    createdAt!: Date;
 
     @ApiProperty()
-    updatedAt: Date;
+    updatedAt!: Date;
 
     @ApiProperty({ type: [() => CommentResponseDto], nullable: true })
     replies?: CommentResponseDto[];
