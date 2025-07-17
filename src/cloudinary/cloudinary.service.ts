@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import { InternalServerErrorException } from '@nestjs/common';
+import { getPublicIdFromUrl } from './utils/getPublicIdFromUrl';
 
 @Injectable()
 export class CloudinaryService {
@@ -31,6 +32,13 @@ export class CloudinaryService {
             throw new InternalServerErrorException(
                 `Failed to delete image from Cloudinary: ${publicId}. ${(error as Error).message}`,
             );
+        }
+    }
+
+    async deleteImageByUrl(url: string) {
+        const publicId = getPublicIdFromUrl(url);
+        if (publicId) {
+            return this.deleteImage(publicId);
         }
     }
 }

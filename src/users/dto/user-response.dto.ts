@@ -22,6 +22,12 @@ export class UserResponseDto {
     @ApiProperty()
     registrationDate!: Date;
 
+    @ApiProperty({
+        nullable: true,
+        description: 'URL to the user profile picture. Can be null.',
+    })
+    profilePictureUrl!: string | null;
+
     @ApiProperty()
     createdAt!: Date;
 

@@ -307,11 +307,11 @@ export class PostsService {
 
         Object.keys(filters).forEach((key) => {
             const operatorMap = {
-                gte: '>=', // greater than or equal
-                lte: '<=', // less than or equal
-                gt: '>', // greater than
-                lt: '<', // less than
-                ne: '!=', // not equal
+                gte: '>=',
+                lte: '<=',
+                gt: '>',
+                lt: '<',
+                ne: '!=',
             };
             const parts = key.split('_');
             const fieldName = parts[0];
